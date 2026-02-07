@@ -4,8 +4,8 @@ import { useParticipants } from '@/hooks/useParticipants';
 import { Navbar } from '@/components/Navbar';
 import { ParticipantsTable } from '@/components/ParticipantsTable';
 import { StatsCard } from '@/components/StatsCard';
-import { LEVEL_LABELS, CATEGORY_LABELS } from '@/types/database';
-import { Loader2, ChevronLeft, Clock, Trophy, Users } from 'lucide-react';
+import { LEVEL_LABELS, CATEGORY_LABELS, GENDER_LABELS, SCHOOL_LEVEL_LABELS } from '@/types/database';
+import { Loader2, ChevronLeft, Clock, Trophy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const GamePage = () => {
@@ -15,7 +15,6 @@ const GamePage = () => {
 
   const isLoading = gameLoading || participantsLoading;
 
-  // Sort participants: by position if available, otherwise by time for timed events
   const sortedParticipants = [...participants].sort((a, b) => {
     if (a.position && b.position) return a.position - b.position;
     if (a.position) return -1;
@@ -56,7 +55,6 @@ const GamePage = () => {
         </div>
       ) : (
         <>
-          {/* Header */}
           <div className="bg-gradient-navy text-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
               <Link 
@@ -69,6 +67,12 @@ const GamePage = () => {
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <Badge className="bg-secondary text-secondary-foreground">
                   {LEVEL_LABELS[game.level]}
+                </Badge>
+                <Badge variant="outline" className={`border-white/30 ${game.gender === 'boys' ? 'text-blue-300' : 'text-pink-300'}`}>
+                  {GENDER_LABELS[game.gender]}
+                </Badge>
+                <Badge variant="outline" className="border-white/30 text-white">
+                  {SCHOOL_LEVEL_LABELS[game.school_level]}
                 </Badge>
                 {game.is_timed && (
                   <Badge variant="outline" className="border-white/30 text-white">
@@ -88,34 +92,16 @@ const GamePage = () => {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <StatsCard 
-                title="Participants" 
-                value={participants.length} 
-                icon="users" 
-              />
-              <StatsCard 
-                title="Qualified" 
-                value={`${qualifiedCount}/${game.max_qualifiers}`} 
-                icon="trophy" 
-              />
-              <StatsCard 
-                title="Schools" 
-                value={new Set(participants.map(p => p.school_id)).size} 
-                icon="location" 
-              />
+              <StatsCard title="Participants" value={participants.length} icon="users" />
+              <StatsCard title="Qualified" value={`${qualifiedCount}/${game.max_qualifiers}`} icon="trophy" />
+              <StatsCard title="Schools" value={new Set(participants.map(p => p.school_id)).size} icon="location" />
               {winner && (
-                <StatsCard 
-                  title="Leader" 
-                  value={`${winner.first_name} ${winner.last_name}`} 
-                  icon="trophy" 
-                />
+                <StatsCard title="Leader" value={`${winner.first_name} ${winner.last_name}`} icon="trophy" />
               )}
             </div>
 
-            {/* Participants Table */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display text-2xl text-foreground">

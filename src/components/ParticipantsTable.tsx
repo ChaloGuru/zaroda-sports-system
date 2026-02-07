@@ -1,4 +1,4 @@
-import { Participant, LEVEL_LABELS } from '@/types/database';
+import { Participant, GENDER_LABELS } from '@/types/database';
 import { Trophy, Medal, Clock, CheckCircle2, MapPin } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -60,6 +60,7 @@ export const ParticipantsTable = ({ participants, isTimed, showGame }: Participa
           <TableRow className="bg-muted/50">
             <TableHead className="w-20">Rank</TableHead>
             <TableHead>Participant</TableHead>
+            <TableHead>Gender</TableHead>
             <TableHead>School</TableHead>
             <TableHead>Location</TableHead>
             {showGame && <TableHead>Game</TableHead>}
@@ -71,7 +72,7 @@ export const ParticipantsTable = ({ participants, isTimed, showGame }: Participa
         <TableBody>
           {participants.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={showGame ? 8 : 7} className="text-center py-12 text-muted-foreground">
+              <TableCell colSpan={showGame ? 9 : 8} className="text-center py-12 text-muted-foreground">
                 No participants yet
               </TableCell>
             </TableRow>
@@ -83,6 +84,11 @@ export const ParticipantsTable = ({ participants, isTimed, showGame }: Participa
                   <div className="font-medium">
                     {participant.first_name} {participant.last_name}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={participant.gender === 'boys' ? 'border-blue-400 text-blue-600' : 'border-pink-400 text-pink-600'}>
+                    {GENDER_LABELS[participant.gender]}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="font-medium text-foreground">

@@ -6,6 +6,7 @@ interface AdminContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  resetPassword: (email: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -48,8 +49,37 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     sessionStorage.removeItem('zaroda_admin');
   };
 
+  const resetPassword = async (email: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // Verify the email belongs to an admin
+      const { data: admin, error: fetchError } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (fetchError || !admin) {
+        return { success: false, error: 'No admin account found with that email' };
+      }
+
+      // Update password
+      const { error: updateError } = await supabase
+        .from('admins')
+        .update({ password_hash: newPassword })
+        .eq('id', admin.id);
+
+      if (updateError) {
+        return { success: false, error: 'Failed to update password' };
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Password reset failed' };
+    }
+  };
+
   return (
-    <AdminContext.Provider value={{ isAdmin, isLoading, login, logout }}>
+    <AdminContext.Provider value={{ isAdmin, isLoading, login, logout, resetPassword }}>
       {children}
     </AdminContext.Provider>
   );

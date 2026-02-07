@@ -1,17 +1,17 @@
 import { Link } from 'react-router-dom';
-import { GameCategory, CATEGORY_LABELS, CATEGORY_ICONS } from '@/types/database';
+import { GameCategory, CATEGORY_LABELS } from '@/types/database';
 import { ArrowRight, Dribbble, Users, Music, Target } from 'lucide-react';
 
 const categoryIcons = {
   ball_games: Dribbble,
-  athletes: Users,
+  athletics: Users,
   music: Music,
   other: Target,
 };
 
 const categoryGradients = {
   ball_games: 'from-emerald-500 to-teal-600',
-  athletes: 'from-orange-500 to-red-500',
+  athletics: 'from-orange-500 to-red-500',
   music: 'from-purple-500 to-pink-500',
   other: 'from-blue-500 to-indigo-600',
 };
