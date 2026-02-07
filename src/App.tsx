@@ -9,6 +9,7 @@ import CategoryPage from "./pages/CategoryPage";
 import GamePage from "./pages/GamePage";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import OverallRankings from "./pages/OverallRankings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/game/:gameId" element={<GamePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/rankings" element={<OverallRankings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

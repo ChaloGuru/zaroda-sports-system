@@ -17,18 +17,21 @@ export type Database = {
       admins: {
         Row: {
           created_at: string
+          email: string | null
           id: string
           password_hash: string
           username: string
         }
         Insert: {
           created_at?: string
+          email?: string | null
           id?: string
           password_hash: string
           username: string
         }
         Update: {
           created_at?: string
+          email?: string | null
           id?: string
           password_hash?: string
           username?: string
@@ -40,33 +43,39 @@ export type Database = {
           category: Database["public"]["Enums"]["game_category"]
           created_at: string
           description: string | null
+          gender: Database["public"]["Enums"]["gender"]
           id: string
           is_timed: boolean
           level: Database["public"]["Enums"]["competition_level"]
           max_qualifiers: number | null
           name: string
+          school_level: Database["public"]["Enums"]["school_level"]
           updated_at: string
         }
         Insert: {
           category: Database["public"]["Enums"]["game_category"]
           created_at?: string
           description?: string | null
+          gender?: Database["public"]["Enums"]["gender"]
           id?: string
           is_timed?: boolean
           level: Database["public"]["Enums"]["competition_level"]
           max_qualifiers?: number | null
           name: string
+          school_level?: Database["public"]["Enums"]["school_level"]
           updated_at?: string
         }
         Update: {
           category?: Database["public"]["Enums"]["game_category"]
           created_at?: string
           description?: string | null
+          gender?: Database["public"]["Enums"]["gender"]
           id?: string
           is_timed?: boolean
           level?: Database["public"]["Enums"]["competition_level"]
           max_qualifiers?: number | null
           name?: string
+          school_level?: Database["public"]["Enums"]["school_level"]
           updated_at?: string
         }
         Relationships: []
@@ -76,6 +85,7 @@ export type Database = {
           created_at: string
           first_name: string
           game_id: string
+          gender: Database["public"]["Enums"]["gender"]
           id: string
           is_qualified: boolean
           last_name: string
@@ -90,6 +100,7 @@ export type Database = {
           created_at?: string
           first_name: string
           game_id: string
+          gender?: Database["public"]["Enums"]["gender"]
           id?: string
           is_qualified?: boolean
           last_name: string
@@ -104,6 +115,7 @@ export type Database = {
           created_at?: string
           first_name?: string
           game_id?: string
+          gender?: Database["public"]["Enums"]["gender"]
           id?: string
           is_qualified?: boolean
           last_name?: string
@@ -176,7 +188,9 @@ export type Database = {
     }
     Enums: {
       competition_level: "zone" | "subcounty" | "county" | "region" | "national"
-      game_category: "ball_games" | "athletes" | "music" | "other"
+      game_category: "ball_games" | "athletics" | "music" | "other"
+      gender: "boys" | "girls"
+      school_level: "primary" | "junior_secondary"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -305,7 +319,9 @@ export const Constants = {
   public: {
     Enums: {
       competition_level: ["zone", "subcounty", "county", "region", "national"],
-      game_category: ["ball_games", "athletes", "music", "other"],
+      game_category: ["ball_games", "athletics", "music", "other"],
+      gender: ["boys", "girls"],
+      school_level: ["primary", "junior_secondary"],
     },
   },
 } as const

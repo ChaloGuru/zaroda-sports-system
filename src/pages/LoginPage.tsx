@@ -5,15 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, Loader2, ChevronLeft, Lock, User } from 'lucide-react';
+import { Shield, Loader2, ChevronLeft, Lock, User, Mail } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   
-  const { login } = useAdmin();
+  const { login, resetPassword } = useAdmin();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +45,28 @@ const LoginPage = () => {
       navigate('/admin');
     } else {
       setError(result.error || 'Invalid credentials');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetEmail.trim() || !newPassword.trim()) {
+      toast.error('Please enter both email and new password');
+      return;
+    }
+    if (newPassword.trim().length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setResetLoading(true);
+    const result = await resetPassword(resetEmail.trim(), newPassword.trim());
+    setResetLoading(false);
+    if (result.success) {
+      toast.success('Password updated successfully');
+      setForgotPasswordOpen(false);
+      setResetEmail('');
+      setNewPassword('');
+    } else {
+      toast.error(result.error || 'Failed to reset password');
     }
   };
 
@@ -116,8 +146,67 @@ const LoginPage = () => {
               )}
             </Button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setForgotPasswordOpen(true)}
+              className="text-sm text-secondary hover:underline"
+            >
+              Forgot Password?
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Enter your admin email address and a new password to reset your credentials.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="reset_email">Admin Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="reset_email"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="Enter your admin email"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new_password">New Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="new_password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>Cancel</Button>
+            <Button onClick={handleResetPassword} disabled={resetLoading}>
+              {resetLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Reset Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

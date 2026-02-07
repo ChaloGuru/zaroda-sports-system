@@ -3,7 +3,7 @@ import { useGames } from '@/hooks/useGames';
 import { useParticipants } from '@/hooks/useParticipants';
 import { Navbar } from '@/components/Navbar';
 import { GameCard } from '@/components/GameCard';
-import { GameCategory, CATEGORY_LABELS, LEVEL_LABELS, CompetitionLevel } from '@/types/database';
+import { GameCategory, Gender, SchoolLevel, CATEGORY_LABELS, LEVEL_LABELS, GENDER_LABELS, SCHOOL_LEVEL_LABELS, CompetitionLevel } from '@/types/database';
 import { Loader2, ChevronLeft, Filter } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -18,18 +18,21 @@ import {
 const CategoryPage = () => {
   const { category } = useParams<{ category: GameCategory }>();
   const [levelFilter, setLevelFilter] = useState<CompetitionLevel | 'all'>('all');
+  const [genderFilter, setGenderFilter] = useState<Gender | 'all'>('all');
+  const [schoolLevelFilter, setSchoolLevelFilter] = useState<SchoolLevel | 'all'>('all');
   
   const { data: games = [], isLoading } = useGames(category as GameCategory);
   const { data: allParticipants = [] } = useParticipants();
 
-  const filteredGames = levelFilter === 'all' 
-    ? games 
-    : games.filter(g => g.level === levelFilter);
+  let filteredGames = games;
+  if (levelFilter !== 'all') filteredGames = filteredGames.filter(g => g.level === levelFilter);
+  if (genderFilter !== 'all') filteredGames = filteredGames.filter(g => g.gender === genderFilter);
+  if (schoolLevelFilter !== 'all') filteredGames = filteredGames.filter(g => g.school_level === schoolLevelFilter);
 
   const getParticipantCount = (gameId: string) => 
     allParticipants.filter(p => p.game_id === gameId).length;
 
-  if (!category || !['ball_games', 'athletes', 'music', 'other'].includes(category)) {
+  if (!category || !['ball_games', 'athletics', 'music', 'other'].includes(category)) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -45,7 +48,6 @@ const CategoryPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       
-      {/* Header */}
       <div className="bg-gradient-navy text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Link 
@@ -64,16 +66,14 @@ const CategoryPage = () => {
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex flex-wrap items-center gap-4 mb-8">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">Filter by level:</span>
+            <span className="text-sm font-medium text-muted-foreground">Filters:</span>
           </div>
           <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as CompetitionLevel | 'all')}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -85,6 +85,26 @@ const CategoryPage = () => {
               <SelectItem value="national">National</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={genderFilter} onValueChange={(v) => setGenderFilter(v as Gender | 'all')}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Gender</SelectItem>
+              <SelectItem value="boys">Boys</SelectItem>
+              <SelectItem value="girls">Girls</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={schoolLevelFilter} onValueChange={(v) => setSchoolLevelFilter(v as SchoolLevel | 'all')}>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All School Levels</SelectItem>
+              <SelectItem value="primary">Primary</SelectItem>
+              <SelectItem value="junior_secondary">Junior Secondary</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {isLoading ? (
@@ -93,7 +113,7 @@ const CategoryPage = () => {
           </div>
         ) : filteredGames.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-muted-foreground text-lg mb-4">No games found in this category</p>
+            <p className="text-muted-foreground text-lg mb-4">No games found matching filters</p>
             <Link to="/">
               <Button variant="outline">Browse Other Categories</Button>
             </Link>

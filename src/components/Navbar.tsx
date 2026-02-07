@@ -1,14 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Dribbble, Music, Users, Target, Shield, Menu, X } from 'lucide-react';
+import { Dribbble, Music, Users, Target, Shield, Menu, X, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { path: '/category/ball_games', label: 'Ball Games', icon: Dribbble },
-  { path: '/category/athletes', label: 'Athletes', icon: Users },
+  { path: '/category/athletics', label: 'Athletics', icon: Users },
   { path: '/category/music', label: 'Music', icon: Music },
   { path: '/category/other', label: 'Other Games', icon: Target },
+  { path: '/rankings', label: 'Rankings', icon: BarChart3 },
 ];
 
 export const Navbar = () => {
@@ -20,7 +21,6 @@ export const Navbar = () => {
     <nav className="sticky top-0 z-50 bg-primary shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
               <span className="text-primary font-display text-xl">Z</span>
@@ -30,7 +30,6 @@ export const Navbar = () => {
             </span>
           </Link>
 
-          {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const isActive = location.pathname.startsWith(item.path);
@@ -52,7 +51,6 @@ export const Navbar = () => {
             })}
           </div>
 
-          {/* Admin Section */}
           <div className="hidden md:flex items-center gap-3">
             {isAdmin ? (
               <>
@@ -83,7 +81,6 @@ export const Navbar = () => {
             )}
           </div>
 
-          {/* Mobile menu button */}
           <button
             className="md:hidden text-primary-foreground p-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -92,7 +89,6 @@ export const Navbar = () => {
           </button>
         </div>
 
-        {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-primary-foreground/20 animate-fade-in">
             {navItems.map((item) => {
@@ -126,10 +122,7 @@ export const Navbar = () => {
                     Dashboard
                   </Link>
                   <button
-                    onClick={() => {
-                      logout();
-                      setMobileMenuOpen(false);
-                    }}
+                    onClick={() => { logout(); setMobileMenuOpen(false); }}
                     className="flex items-center gap-3 px-4 py-3 text-primary-foreground/80 hover:text-primary-foreground rounded-lg font-medium"
                   >
                     Logout

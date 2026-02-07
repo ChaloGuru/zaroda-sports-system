@@ -1,5 +1,7 @@
 export type CompetitionLevel = 'zone' | 'subcounty' | 'county' | 'region' | 'national';
-export type GameCategory = 'ball_games' | 'athletes' | 'music' | 'other';
+export type GameCategory = 'ball_games' | 'athletics' | 'music' | 'other';
+export type Gender = 'boys' | 'girls';
+export type SchoolLevel = 'primary' | 'junior_secondary';
 
 export interface School {
   id: string;
@@ -18,6 +20,8 @@ export interface Game {
   name: string;
   category: GameCategory;
   level: CompetitionLevel;
+  gender: Gender;
+  school_level: SchoolLevel;
   description?: string;
   is_timed: boolean;
   max_qualifiers: number;
@@ -31,6 +35,7 @@ export interface Participant {
   last_name: string;
   school_id: string;
   game_id: string;
+  gender: Gender;
   time_taken?: number;
   position?: number;
   score?: number;
@@ -45,12 +50,13 @@ export interface Participant {
 export interface Admin {
   id: string;
   username: string;
+  email?: string;
   created_at: string;
 }
 
 export const CATEGORY_LABELS: Record<GameCategory, string> = {
   ball_games: 'Ball Games',
-  athletes: 'Athletes',
+  athletics: 'Athletics',
   music: 'Music',
   other: 'Other Games',
 };
@@ -63,9 +69,27 @@ export const LEVEL_LABELS: Record<CompetitionLevel, string> = {
   national: 'National',
 };
 
+export const GENDER_LABELS: Record<Gender, string> = {
+  boys: 'Boys',
+  girls: 'Girls',
+};
+
+export const SCHOOL_LEVEL_LABELS: Record<SchoolLevel, string> = {
+  primary: 'Primary',
+  junior_secondary: 'Junior Secondary',
+};
+
 export const CATEGORY_ICONS: Record<GameCategory, string> = {
   ball_games: '⚽',
-  athletes: '🏃',
+  athletics: '🏃',
   music: '🎵',
   other: '🎯',
+};
+
+export const TEAM_NAME_BY_LEVEL: Record<CompetitionLevel, string> = {
+  zone: 'School',
+  subcounty: 'Zone',
+  county: 'Sub-County',
+  region: 'County',
+  national: 'Region',
 };

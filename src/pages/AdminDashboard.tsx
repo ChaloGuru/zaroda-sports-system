@@ -12,45 +12,26 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { 
-  Game, School, Participant, GameCategory, CompetitionLevel,
-  CATEGORY_LABELS, LEVEL_LABELS 
+  Game, School, Participant, GameCategory, CompetitionLevel, Gender, SchoolLevel,
+  CATEGORY_LABELS, LEVEL_LABELS, GENDER_LABELS, SCHOOL_LEVEL_LABELS
 } from '@/types/database';
 import { 
   Plus, Pencil, Trash2, LogOut, Home, Trophy, Users, 
-  MapPin, Target, Clock, CheckCircle2, Loader2, Timer
+  MapPin, Target, Clock, CheckCircle2, Loader2, Timer, BarChart3
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -64,34 +45,38 @@ const AdminDashboard = () => {
   const createGame = useCreateGame();
   const updateGame = useUpdateGame();
   const deleteGame = useDeleteGame();
-  
   const createSchool = useCreateSchool();
   const updateSchool = useUpdateSchool();
   const deleteSchool = useDeleteSchool();
-  
   const createParticipant = useCreateParticipant();
   const updateParticipant = useUpdateParticipant();
   const deleteParticipant = useDeleteParticipant();
   const bulkUpdateQualified = useBulkUpdateQualified();
   const rankByTime = useRankByTime();
 
-  // State for dialogs
   const [gameDialog, setGameDialog] = useState(false);
   const [schoolDialog, setSchoolDialog] = useState(false);
   const [participantDialog, setParticipantDialog] = useState(false);
   const [qualifyDialog, setQualifyDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ type: 'game' | 'school' | 'participant'; id: string } | null>(null);
   
-  // State for form data
   const [editingGame, setEditingGame] = useState<Game | null>(null);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
   const [selectedGameForQualify, setSelectedGameForQualify] = useState<Game | null>(null);
   const [selectedQualifiers, setSelectedQualifiers] = useState<string[]>([]);
   
-  // Filter states
   const [filterCategory, setFilterCategory] = useState<GameCategory | 'all'>('all');
   const [filterGame, setFilterGame] = useState<string>('all');
+
+  // Form state for selects (since native select doesn't work well with FormData)
+  const [gameFormGender, setGameFormGender] = useState<Gender>('boys');
+  const [gameFormSchoolLevel, setGameFormSchoolLevel] = useState<SchoolLevel>('primary');
+  const [gameFormCategory, setGameFormCategory] = useState<GameCategory>('ball_games');
+  const [gameFormLevel, setGameFormLevel] = useState<CompetitionLevel>('zone');
+  const [participantFormGender, setParticipantFormGender] = useState<Gender>('boys');
+  const [participantFormSchoolId, setParticipantFormSchoolId] = useState<string>('');
+  const [participantFormGameId, setParticipantFormGameId] = useState<string>('');
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -99,17 +84,45 @@ const AdminDashboard = () => {
     }
   }, [isAdmin, authLoading, navigate]);
 
+  // Sync form state when editing
+  useEffect(() => {
+    if (editingGame) {
+      setGameFormGender(editingGame.gender);
+      setGameFormSchoolLevel(editingGame.school_level);
+      setGameFormCategory(editingGame.category);
+      setGameFormLevel(editingGame.level);
+    } else {
+      setGameFormGender('boys');
+      setGameFormSchoolLevel('primary');
+      setGameFormCategory('ball_games');
+      setGameFormLevel('zone');
+    }
+  }, [editingGame]);
+
+  useEffect(() => {
+    if (editingParticipant) {
+      setParticipantFormGender(editingParticipant.gender);
+      setParticipantFormSchoolId(editingParticipant.school_id);
+      setParticipantFormGameId(editingParticipant.game_id);
+    } else {
+      setParticipantFormGender('boys');
+      setParticipantFormSchoolId('');
+      setParticipantFormGameId('');
+    }
+  }, [editingParticipant]);
+
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
-  // Game CRUD
   const handleSaveGame = async (formData: FormData) => {
     const data = {
       name: formData.get('name') as string,
-      category: formData.get('category') as GameCategory,
-      level: formData.get('level') as CompetitionLevel,
+      category: gameFormCategory,
+      level: gameFormLevel,
+      gender: gameFormGender,
+      school_level: gameFormSchoolLevel,
       description: formData.get('description') as string || undefined,
       is_timed: formData.get('is_timed') === 'true',
       max_qualifiers: parseInt(formData.get('max_qualifiers') as string) || 5,
@@ -130,7 +143,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // School CRUD
   const handleSaveSchool = async (formData: FormData) => {
     const data = {
       name: formData.get('name') as string,
@@ -156,13 +168,13 @@ const AdminDashboard = () => {
     }
   };
 
-  // Participant CRUD
   const handleSaveParticipant = async (formData: FormData) => {
     const data = {
       first_name: formData.get('first_name') as string,
       last_name: formData.get('last_name') as string,
-      school_id: formData.get('school_id') as string,
-      game_id: formData.get('game_id') as string,
+      school_id: participantFormSchoolId,
+      game_id: participantFormGameId,
+      gender: participantFormGender,
       time_taken: formData.get('time_taken') ? parseFloat(formData.get('time_taken') as string) : undefined,
       position: formData.get('position') ? parseInt(formData.get('position') as string) : undefined,
       score: formData.get('score') ? parseFloat(formData.get('score') as string) : undefined,
@@ -185,10 +197,8 @@ const AdminDashboard = () => {
     }
   };
 
-  // Delete handlers
   const handleDelete = async () => {
     if (!deleteDialog) return;
-    
     try {
       if (deleteDialog.type === 'game') {
         await deleteGame.mutateAsync(deleteDialog.id);
@@ -206,7 +216,6 @@ const AdminDashboard = () => {
     setDeleteDialog(null);
   };
 
-  // Qualifier selection
   const handleOpenQualifyDialog = (game: Game) => {
     setSelectedGameForQualify(game);
     const gameParticipants = participants.filter(p => p.game_id === game.id);
@@ -216,7 +225,6 @@ const AdminDashboard = () => {
 
   const handleSaveQualifiers = async () => {
     if (!selectedGameForQualify) return;
-    
     try {
       await bulkUpdateQualified.mutateAsync({
         gameId: selectedGameForQualify.id,
@@ -238,7 +246,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Filtered data
   const filteredGames = filterCategory === 'all' 
     ? games 
     : games.filter(g => g.category === filterCategory);
@@ -276,19 +283,25 @@ const AdminDashboard = () => {
             </div>
             <div className="flex items-center gap-3">
               <Button 
-                variant="outline" 
+                variant="secondary" 
                 size="sm" 
                 onClick={() => navigate('/')}
-                className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
               >
                 <Home className="w-4 h-4 mr-2" />
                 View Site
               </Button>
               <Button 
-                variant="outline" 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => navigate('/rankings')}
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Rankings
+              </Button>
+              <Button 
+                variant="destructive" 
                 size="sm" 
                 onClick={handleLogout}
-                className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
@@ -354,40 +367,28 @@ const AdminDashboard = () => {
         ) : (
           <Tabs defaultValue="games" className="space-y-6">
             <TabsList className="bg-muted">
-              <TabsTrigger value="games" className="gap-2">
-                <Target className="w-4 h-4" />
-                Games
-              </TabsTrigger>
-              <TabsTrigger value="participants" className="gap-2">
-                <Users className="w-4 h-4" />
-                Participants
-              </TabsTrigger>
-              <TabsTrigger value="schools" className="gap-2">
-                <MapPin className="w-4 h-4" />
-                Schools
-              </TabsTrigger>
+              <TabsTrigger value="games" className="gap-2"><Target className="w-4 h-4" />Games</TabsTrigger>
+              <TabsTrigger value="participants" className="gap-2"><Users className="w-4 h-4" />Participants</TabsTrigger>
+              <TabsTrigger value="schools" className="gap-2"><MapPin className="w-4 h-4" />Schools</TabsTrigger>
             </TabsList>
 
             {/* Games Tab */}
             <TabsContent value="games" className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Select value={filterCategory} onValueChange={(v) => setFilterCategory(v as GameCategory | 'all')}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="ball_games">Ball Games</SelectItem>
-                      <SelectItem value="athletes">Athletes</SelectItem>
-                      <SelectItem value="music">Music</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={filterCategory} onValueChange={(v) => setFilterCategory(v as GameCategory | 'all')}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="ball_games">Ball Games</SelectItem>
+                    <SelectItem value="athletics">Athletics</SelectItem>
+                    <SelectItem value="music">Music</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button onClick={() => { setEditingGame(null); setGameDialog(true); }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Game
+                  <Plus className="w-4 h-4 mr-2" />Add Game
                 </Button>
               </div>
 
@@ -398,6 +399,8 @@ const AdminDashboard = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Level</TableHead>
+                      <TableHead>Gender</TableHead>
+                      <TableHead>School Level</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Qualifiers</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -406,7 +409,7 @@ const AdminDashboard = () => {
                   <TableBody>
                     {filteredGames.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           No games found. Add your first game!
                         </TableCell>
                       </TableRow>
@@ -414,18 +417,17 @@ const AdminDashboard = () => {
                       filteredGames.map(game => (
                         <TableRow key={game.id}>
                           <TableCell className="font-medium">{game.name}</TableCell>
+                          <TableCell><Badge variant="outline">{CATEGORY_LABELS[game.category]}</Badge></TableCell>
+                          <TableCell><Badge variant="secondary">{LEVEL_LABELS[game.level]}</Badge></TableCell>
                           <TableCell>
-                            <Badge variant="outline">{CATEGORY_LABELS[game.category]}</Badge>
+                            <Badge variant="outline" className={game.gender === 'boys' ? 'border-blue-400 text-blue-600' : 'border-pink-400 text-pink-600'}>
+                              {GENDER_LABELS[game.gender]}
+                            </Badge>
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">{LEVEL_LABELS[game.level]}</Badge>
-                          </TableCell>
+                          <TableCell><Badge variant="outline">{SCHOOL_LEVEL_LABELS[game.school_level]}</Badge></TableCell>
                           <TableCell>
                             {game.is_timed ? (
-                              <div className="flex items-center gap-1 text-sm">
-                                <Clock className="w-4 h-4" />
-                                Timed
-                              </div>
+                              <div className="flex items-center gap-1 text-sm"><Clock className="w-4 h-4" />Timed</div>
                             ) : (
                               <span className="text-muted-foreground">Standard</span>
                             )}
@@ -434,35 +436,17 @@ const AdminDashboard = () => {
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
                               {game.is_timed && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => handleRankByTime(game.id)}
-                                >
-                                  <Timer className="w-4 h-4 mr-1" />
-                                  Rank
+                                <Button variant="outline" size="sm" onClick={() => handleRankByTime(game.id)}>
+                                  <Timer className="w-4 h-4 mr-1" />Rank
                                 </Button>
                               )}
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleOpenQualifyDialog(game)}
-                              >
-                                <CheckCircle2 className="w-4 h-4 mr-1" />
-                                Qualify
+                              <Button variant="outline" size="sm" onClick={() => handleOpenQualifyDialog(game)}>
+                                <CheckCircle2 className="w-4 h-4 mr-1" />Qualify
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => { setEditingGame(game); setGameDialog(true); }}
-                              >
+                              <Button variant="ghost" size="icon" onClick={() => { setEditingGame(game); setGameDialog(true); }}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => setDeleteDialog({ type: 'game', id: game.id })}
-                              >
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteDialog({ type: 'game', id: game.id })}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </div>
@@ -478,22 +462,21 @@ const AdminDashboard = () => {
             {/* Participants Tab */}
             <TabsContent value="participants" className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Select value={filterGame} onValueChange={setFilterGame}>
-                    <SelectTrigger className="w-60">
-                      <SelectValue placeholder="Filter by game" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Games</SelectItem>
-                      {games.map(game => (
-                        <SelectItem key={game.id} value={game.id}>{game.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={filterGame} onValueChange={setFilterGame}>
+                  <SelectTrigger className="w-60">
+                    <SelectValue placeholder="Filter by game" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Games</SelectItem>
+                    {games.map(game => (
+                      <SelectItem key={game.id} value={game.id}>
+                        {game.name} ({GENDER_LABELS[game.gender]} - {SCHOOL_LEVEL_LABELS[game.school_level]})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button onClick={() => { setEditingParticipant(null); setParticipantDialog(true); }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Participant
+                  <Plus className="w-4 h-4 mr-2" />Add Participant
                 </Button>
               </div>
 
@@ -502,6 +485,7 @@ const AdminDashboard = () => {
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead>Name</TableHead>
+                      <TableHead>Gender</TableHead>
                       <TableHead>School</TableHead>
                       <TableHead>Game</TableHead>
                       <TableHead>Position</TableHead>
@@ -514,24 +498,23 @@ const AdminDashboard = () => {
                   <TableBody>
                     {filteredParticipants.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                           No participants found. Add your first participant!
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredParticipants.map(participant => (
                         <TableRow key={participant.id}>
-                          <TableCell className="font-medium">
-                            {participant.first_name} {participant.last_name}
+                          <TableCell className="font-medium">{participant.first_name} {participant.last_name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={participant.gender === 'boys' ? 'border-blue-400 text-blue-600' : 'border-pink-400 text-pink-600'}>
+                              {GENDER_LABELS[participant.gender]}
+                            </Badge>
                           </TableCell>
                           <TableCell>{participant.school?.name || '-'}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{participant.game?.name}</Badge>
-                          </TableCell>
+                          <TableCell><Badge variant="outline">{participant.game?.name}</Badge></TableCell>
                           <TableCell>{participant.position || '-'}</TableCell>
-                          <TableCell>
-                            {participant.time_taken ? `${participant.time_taken}s` : '-'}
-                          </TableCell>
+                          <TableCell>{participant.time_taken ? `${participant.time_taken}s` : '-'}</TableCell>
                           <TableCell>{participant.score ?? '-'}</TableCell>
                           <TableCell>
                             {participant.is_qualified ? (
@@ -542,18 +525,10 @@ const AdminDashboard = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => { setEditingParticipant(participant); setParticipantDialog(true); }}
-                              >
+                              <Button variant="ghost" size="icon" onClick={() => { setEditingParticipant(participant); setParticipantDialog(true); }}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => setDeleteDialog({ type: 'participant', id: participant.id })}
-                              >
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteDialog({ type: 'participant', id: participant.id })}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </div>
@@ -570,8 +545,7 @@ const AdminDashboard = () => {
             <TabsContent value="schools" className="space-y-4">
               <div className="flex items-center justify-end">
                 <Button onClick={() => { setEditingSchool(null); setSchoolDialog(true); }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add School
+                  <Plus className="w-4 h-4 mr-2" />Add School
                 </Button>
               </div>
 
@@ -606,18 +580,10 @@ const AdminDashboard = () => {
                           <TableCell>{school.country}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => { setEditingSchool(school); setSchoolDialog(true); }}
-                              >
+                              <Button variant="ghost" size="icon" onClick={() => { setEditingSchool(school); setSchoolDialog(true); }}>
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => setDeleteDialog({ type: 'school', id: school.id })}
-                              >
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteDialog({ type: 'school', id: school.id })}>
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </div>
@@ -635,7 +601,7 @@ const AdminDashboard = () => {
 
       {/* Game Dialog */}
       <Dialog open={gameDialog} onOpenChange={setGameDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingGame ? 'Edit Game' : 'Add New Game'}</DialogTitle>
           </DialogHeader>
@@ -648,30 +614,48 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select name="category" defaultValue={editingGame?.category || 'ball_games'}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={gameFormCategory} onValueChange={(v) => setGameFormCategory(v as GameCategory)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ball_games">Ball Games</SelectItem>
-                      <SelectItem value="athletes">Athletes</SelectItem>
+                      <SelectItem value="athletics">Athletics</SelectItem>
                       <SelectItem value="music">Music</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Level</Label>
-                  <Select name="level" defaultValue={editingGame?.level || 'zone'}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Label>Competition Level</Label>
+                  <Select value={gameFormLevel} onValueChange={(v) => setGameFormLevel(v as CompetitionLevel)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="zone">Zone</SelectItem>
                       <SelectItem value="subcounty">Sub-County</SelectItem>
                       <SelectItem value="county">County</SelectItem>
                       <SelectItem value="region">Region</SelectItem>
                       <SelectItem value="national">National</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Gender</Label>
+                  <Select value={gameFormGender} onValueChange={(v) => setGameFormGender(v as Gender)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="boys">Boys</SelectItem>
+                      <SelectItem value="girls">Girls</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>School Level</Label>
+                  <Select value={gameFormSchoolLevel} onValueChange={(v) => setGameFormSchoolLevel(v as SchoolLevel)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="primary">Primary</SelectItem>
+                      <SelectItem value="junior_secondary">Junior Secondary</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -684,7 +668,6 @@ const AdminDashboard = () => {
                 <div className="flex items-center gap-2">
                   <Switch 
                     id="is_timed" 
-                    name="is_timed"
                     defaultChecked={editingGame?.is_timed}
                     onCheckedChange={(checked) => {
                       const input = document.querySelector('input[name="is_timed"]') as HTMLInputElement;
@@ -697,13 +680,7 @@ const AdminDashboard = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="max_qualifiers">Max Qualifiers</Label>
-                <Input 
-                  id="max_qualifiers" 
-                  name="max_qualifiers" 
-                  type="number" 
-                  min="1" 
-                  defaultValue={editingGame?.max_qualifiers || 5} 
-                />
+                <Input id="max_qualifiers" name="max_qualifiers" type="number" min="1" defaultValue={editingGame?.max_qualifiers || 5} />
               </div>
             </div>
             <DialogFooter>
@@ -778,11 +755,19 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label>Gender</Label>
+                <Select value={participantFormGender} onValueChange={(v) => setParticipantFormGender(v as Gender)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="boys">Boy</SelectItem>
+                    <SelectItem value="girls">Girl</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>School</Label>
-                <Select name="school_id" defaultValue={editingParticipant?.school_id}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select school" />
-                  </SelectTrigger>
+                <Select value={participantFormSchoolId} onValueChange={setParticipantFormSchoolId}>
+                  <SelectTrigger><SelectValue placeholder="Select school" /></SelectTrigger>
                   <SelectContent>
                     {schools.map(school => (
                       <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
@@ -792,13 +777,13 @@ const AdminDashboard = () => {
               </div>
               <div className="space-y-2">
                 <Label>Game</Label>
-                <Select name="game_id" defaultValue={editingParticipant?.game_id}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select game" />
-                  </SelectTrigger>
+                <Select value={participantFormGameId} onValueChange={setParticipantFormGameId}>
+                  <SelectTrigger><SelectValue placeholder="Select game" /></SelectTrigger>
                   <SelectContent>
                     {games.map(game => (
-                      <SelectItem key={game.id} value={game.id}>{game.name} ({LEVEL_LABELS[game.level]})</SelectItem>
+                      <SelectItem key={game.id} value={game.id}>
+                        {game.name} ({GENDER_LABELS[game.gender]} - {SCHOOL_LEVEL_LABELS[game.school_level]} - {LEVEL_LABELS[game.level]})
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -813,7 +798,7 @@ const AdminDashboard = () => {
                   <Input id="time_taken" name="time_taken" type="number" step="0.001" defaultValue={editingParticipant?.time_taken || ''} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="score">Score</Label>
+                  <Label htmlFor="score">Score/Points</Label>
                   <Input id="score" name="score" type="number" step="0.01" defaultValue={editingParticipant?.score || ''} />
                 </div>
               </div>
@@ -850,7 +835,7 @@ const AdminDashboard = () => {
           </DialogHeader>
           <div className="py-4">
             <p className="text-muted-foreground mb-4">
-              Select up to {selectedGameForQualify?.max_qualifiers} participants to qualify for the next level.
+              Select up to {selectedGameForQualify?.max_qualifiers} participants to qualify.
               Selected: {selectedQualifiers.length}/{selectedGameForQualify?.max_qualifiers}
             </p>
             <div className="max-h-96 overflow-y-auto space-y-2">
@@ -875,9 +860,7 @@ const AdminDashboard = () => {
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                        selectedQualifiers.includes(participant.id)
-                          ? 'bg-success text-success-foreground'
-                          : 'bg-muted'
+                        selectedQualifiers.includes(participant.id) ? 'bg-success text-success-foreground' : 'bg-muted'
                       }`}>
                         {selectedQualifiers.includes(participant.id) ? (
                           <CheckCircle2 className="w-4 h-4" />
@@ -887,12 +870,12 @@ const AdminDashboard = () => {
                       </div>
                       <div>
                         <p className="font-medium">{participant.first_name} {participant.last_name}</p>
-                        <p className="text-sm text-muted-foreground">{participant.school?.name}</p>
+                        <p className="text-sm text-muted-foreground">{participant.school?.name} • {GENDER_LABELS[participant.gender]}</p>
                       </div>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
                       {participant.time_taken && <span>{participant.time_taken}s</span>}
-                      {participant.score && <span>Score: {participant.score}</span>}
+                      {participant.score != null && <span> Score: {participant.score}</span>}
                     </div>
                   </div>
                 ))}
