@@ -36,7 +36,7 @@ export const useGame = (id: string) => {
 export const useCreateGame = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (game: Omit<Game, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (game: Omit<Game, 'id' | 'created_at' | 'updated_at'> & { race_type?: string | null }) => {
       const { data, error } = await supabase
         .from('games')
         .insert(game)

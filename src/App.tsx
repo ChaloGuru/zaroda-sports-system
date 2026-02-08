@@ -10,6 +10,8 @@ import GamePage from "./pages/GamePage";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import OverallRankings from "./pages/OverallRankings";
+import CircularsPage from "./pages/CircularsPage";
+import QualifiedTeamsPage from "./pages/QualifiedTeamsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/rankings" element={<OverallRankings />} />
+            <Route path="/circulars" element={<CircularsPage />} />
+            <Route path="/qualified-teams" element={<QualifiedTeamsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
