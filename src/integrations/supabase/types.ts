@@ -38,9 +38,82 @@ export type Database = {
         }
         Relationships: []
       }
+      championships: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          level: Database["public"]["Enums"]["competition_level"]
+          location: string | null
+          name: string
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          level: Database["public"]["Enums"]["competition_level"]
+          location?: string | null
+          name: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          level?: Database["public"]["Enums"]["competition_level"]
+          location?: string | null
+          name?: string
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      circulars: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_published: boolean
+          sender_name: string
+          sender_role: string
+          target_level: Database["public"]["Enums"]["competition_level"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          sender_name: string
+          sender_role?: string
+          target_level?: Database["public"]["Enums"]["competition_level"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          sender_name?: string
+          sender_role?: string
+          target_level?: Database["public"]["Enums"]["competition_level"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           category: Database["public"]["Enums"]["game_category"]
+          championship_id: string | null
           created_at: string
           description: string | null
           gender: Database["public"]["Enums"]["gender"]
@@ -49,11 +122,13 @@ export type Database = {
           level: Database["public"]["Enums"]["competition_level"]
           max_qualifiers: number | null
           name: string
+          race_type: string | null
           school_level: Database["public"]["Enums"]["school_level"]
           updated_at: string
         }
         Insert: {
           category: Database["public"]["Enums"]["game_category"]
+          championship_id?: string | null
           created_at?: string
           description?: string | null
           gender?: Database["public"]["Enums"]["gender"]
@@ -62,11 +137,13 @@ export type Database = {
           level: Database["public"]["Enums"]["competition_level"]
           max_qualifiers?: number | null
           name: string
+          race_type?: string | null
           school_level?: Database["public"]["Enums"]["school_level"]
           updated_at?: string
         }
         Update: {
           category?: Database["public"]["Enums"]["game_category"]
+          championship_id?: string | null
           created_at?: string
           description?: string | null
           gender?: Database["public"]["Enums"]["gender"]
@@ -75,10 +152,167 @@ export type Database = {
           level?: Database["public"]["Enums"]["competition_level"]
           max_qualifiers?: number | null
           name?: string
+          race_type?: string | null
           school_level?: Database["public"]["Enums"]["school_level"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "games_championship_id_fkey"
+            columns: ["championship_id"]
+            isOneToOne: false
+            referencedRelation: "championships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      heat_participants: {
+        Row: {
+          created_at: string
+          heat_id: string
+          id: string
+          is_qualified_for_final: boolean
+          participant_id: string
+          position: number | null
+          time_taken: number | null
+        }
+        Insert: {
+          created_at?: string
+          heat_id: string
+          id?: string
+          is_qualified_for_final?: boolean
+          participant_id: string
+          position?: number | null
+          time_taken?: number | null
+        }
+        Update: {
+          created_at?: string
+          heat_id?: string
+          id?: string
+          is_qualified_for_final?: boolean
+          participant_id?: string
+          position?: number | null
+          time_taken?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "heat_participants_heat_id_fkey"
+            columns: ["heat_id"]
+            isOneToOne: false
+            referencedRelation: "heats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "heat_participants_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      heats: {
+        Row: {
+          created_at: string
+          game_id: string
+          heat_number: number
+          heat_type: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          heat_number: number
+          heat_type?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          heat_number?: number
+          heat_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "heats_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_pools: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          notes: string | null
+          round_name: string
+          team_a_school_id: string | null
+          team_a_score: number | null
+          team_b_school_id: string | null
+          team_b_score: number | null
+          updated_at: string
+          winner_school_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          notes?: string | null
+          round_name?: string
+          team_a_school_id?: string | null
+          team_a_score?: number | null
+          team_b_school_id?: string | null
+          team_b_score?: number | null
+          updated_at?: string
+          winner_school_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          notes?: string | null
+          round_name?: string
+          team_a_school_id?: string | null
+          team_a_score?: number | null
+          team_b_school_id?: string | null
+          team_b_score?: number | null
+          updated_at?: string
+          winner_school_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_pools_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_pools_team_a_school_id_fkey"
+            columns: ["team_a_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_pools_team_b_school_id_fkey"
+            columns: ["team_b_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_pools_winner_school_id_fkey"
+            columns: ["winner_school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       participants: {
         Row: {
