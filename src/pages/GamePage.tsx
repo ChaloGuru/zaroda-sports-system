@@ -3,6 +3,7 @@ import { useGame } from '@/hooks/useGames';
 import { useParticipants } from '@/hooks/useParticipants';
 import { useHeats, useAllHeatParticipants } from '@/hooks/useHeats';
 import { useMatchPools } from '@/hooks/useMatchPools';
+import { useChampionships } from '@/hooks/useChampionships';
 import { Navbar } from '@/components/Navbar';
 import { ParticipantsTable } from '@/components/ParticipantsTable';
 import { StatsCard } from '@/components/StatsCard';
@@ -15,6 +16,14 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 
+const formatTimeDisplay = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  const wholeSecs = Math.floor(remaining);
+  const cs = Math.round((remaining - wholeSecs) * 100);
+  return `${mins}.${wholeSecs.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
+};
+
 const GamePage = () => {
   const { gameId } = useParams<{ gameId: string }>();
   const { data: game, isLoading: gameLoading } = useGame(gameId || '');
@@ -22,8 +31,11 @@ const GamePage = () => {
   const { data: heats = [] } = useHeats(gameId);
   const { data: heatParticipants = [] } = useAllHeatParticipants(gameId);
   const { data: matchPools = [] } = useMatchPools(gameId);
+  const { data: championships = [] } = useChampionships();
 
   const isLoading = gameLoading || participantsLoading;
+
+  const championship = game?.championship_id ? championships.find(c => c.id === game.championship_id) : null;
 
   const sortedParticipants = [...participants].sort((a, b) => {
     if (a.position && b.position) return a.position - b.position;
@@ -84,6 +96,9 @@ const GamePage = () => {
                   <Share2 className="w-4 h-4 mr-1" />Share
                 </Button>
               </div>
+              {championship && (
+                <p className="text-secondary font-display text-lg mb-2">{championship.name}</p>
+              )}
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <Badge className="bg-secondary text-secondary-foreground">{LEVEL_LABELS[game.level]}</Badge>
                 <Badge variant="outline" className={`border-white/30 ${game.gender === 'boys' ? 'text-blue-300' : 'text-pink-300'}`}>
@@ -91,7 +106,9 @@ const GamePage = () => {
                 </Badge>
                 <Badge variant="outline" className="border-white/30 text-white">{SCHOOL_LEVEL_LABELS[game.school_level]}</Badge>
                 {game.is_timed && (
-                  <Badge variant="outline" className="border-white/30 text-white"><Clock className="w-3 h-3 mr-1" />Timed Event</Badge>
+                  <Badge variant="outline" className="border-white/30 text-white">
+                    <Clock className="w-3 h-3 mr-1" />{game.race_type === 'field_event' ? 'Measurement Taken' : 'Timed Event'}
+                  </Badge>
                 )}
                 {game.race_type && (
                   <Badge variant="outline" className="border-white/30 text-white">{RACE_TYPE_LABELS[game.race_type] || game.race_type}</Badge>
@@ -149,7 +166,7 @@ const GamePage = () => {
                                 </TableCell>
                                 <TableCell>{hp.participant?.school?.name || '-'}</TableCell>
                                 <TableCell className="text-right font-mono">
-                                  {hp.time_taken ? `${hp.time_taken}s` : '-'}
+                                  {hp.time_taken ? formatTimeDisplay(hp.time_taken) : '-'}
                                 </TableCell>
                                 <TableCell className="text-center">
                                   {hp.is_qualified_for_final ? (
