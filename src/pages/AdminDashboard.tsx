@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/contexts/AdminContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '@/hooks/useGames';
 import { useSchools, useCreateSchool, useUpdateSchool, useDeleteSchool } from '@/hooks/useSchools';
 import { useParticipants, useCreateParticipant, useUpdateParticipant, useDeleteParticipant, useBulkUpdateQualified, useRankByTime } from '@/hooks/useParticipants';
@@ -142,6 +143,7 @@ const AdminDashboard = () => {
   
   // Circular form
   const [circularLevel, setCircularLevel] = useState<CompetitionLevel>('national');
+  const [circularDocument, setCircularDocument] = useState<File | null>(null);
   
   // Heat form
   const [heatFormGameId, setHeatFormGameId] = useState<string>('');
@@ -395,6 +397,24 @@ const AdminDashboard = () => {
 
   const handleSaveCircular = async (formData: FormData) => {
     try {
+      let documentUrl = null;
+      
+      // Upload document if provided
+      if (circularDocument) {
+        const fileName = `circular_${Date.now()}_${circularDocument.name}`;
+        const { data, error } = await supabase.storage
+          .from('circulars')
+          .upload(fileName, circularDocument);
+        
+        if (error) throw error;
+        
+        const { data: publicData } = supabase.storage
+          .from('circulars')
+          .getPublicUrl(fileName);
+        
+        documentUrl = publicData?.publicUrl;
+      }
+      
       await createCircular.mutateAsync({
         title: formData.get('title') as string,
         content: formData.get('content') as string,
@@ -402,10 +422,15 @@ const AdminDashboard = () => {
         sender_role: formData.get('sender_role') as string || 'National Admin',
         target_level: circularLevel,
         is_published: true,
+        document_url: documentUrl,
       });
       toast.success('Circular published');
       setCircularDialog(false);
-    } catch { toast.error('Failed to publish circular'); }
+      setCircularDocument(null);
+    } catch { 
+      toast.error('Failed to publish circular'); 
+      setCircularDocument(null);
+    }
   };
 
   const handleCreateHeat = async (formData: FormData) => {
@@ -1129,8 +1154,21 @@ const AdminDashboard = () => {
                 </Select>
               </div>
               <div className="space-y-2"><Label htmlFor="circ_content">Content</Label><Textarea id="circ_content" name="content" rows={6} required /></div>
+              <div className="space-y-2">
+                <Label htmlFor="circ_document">Attach Document (Optional)</Label>
+                <Input 
+                  id="circ_document" 
+                  type="file" 
+                  onChange={(e) => setCircularDocument(e.target.files?.[0] || null)}
+                  className="cursor-pointer"
+                  accept="*/*"
+                />
+                {circularDocument && (
+                  <p className="text-sm text-green-600">✓ File selected: {circularDocument.name}</p>
+                )}
+              </div>
             </div>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setCircularDialog(false)}>Cancel</Button><Button type="submit">Publish</Button></DialogFooter>
+            <DialogFooter><Button type="button" variant="outline" onClick={() => { setCircularDialog(false); setCircularDocument(null); }}>Cancel</Button><Button type="submit">Publish</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

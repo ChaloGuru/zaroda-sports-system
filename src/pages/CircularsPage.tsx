@@ -1,8 +1,9 @@
 import { useCirculars } from '@/hooks/useCirculars';
 import { Navbar } from '@/components/Navbar';
 import { LEVEL_LABELS, CompetitionLevel } from '@/types/database';
-import { Loader2, FileText, User, Calendar } from 'lucide-react';
+import { Loader2, FileText, User, Calendar, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -72,6 +73,21 @@ const CircularsPage = () => {
                 <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
                   {circular.content}
                 </div>
+                {circular.document_url && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <Button 
+                      asChild 
+                      variant="outline" 
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <a href={circular.document_url} target="_blank" rel="noopener noreferrer">
+                        <Download className="w-4 h-4" />
+                        Download Document
+                      </a>
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -77,6 +77,7 @@ export interface Circular {
   sender_role: string;
   target_level: CompetitionLevel;
   is_published: boolean;
+  document_url?: string;
   created_at: string;
   updated_at: string;
 }

@@ -9,6 +9,7 @@ import { Shield, Loader2, ChevronLeft, Lock, User, Mail } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
+import { PasswordResetSummary } from '@/components/PasswordResetSummary';
 import { toast } from 'sonner';
 
 const LoginPage = () => {
@@ -19,7 +20,10 @@ const LoginPage = () => {
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [resetSummary, setResetSummary] = useState<any>(null);
   
   const { login, resetPassword } = useAdmin();
   const navigate = useNavigate();
@@ -49,25 +53,48 @@ const LoginPage = () => {
   };
 
   const handleResetPassword = async () => {
-    if (!resetEmail.trim() || !newPassword.trim()) {
-      toast.error('Please enter both email and new password');
+    if (!resetEmail.trim()) {
+      toast.error('Please enter the admin email');
       return;
     }
-    if (newPassword.trim().length < 6) {
+    if (!newPassword.trim()) {
+      toast.error('Please enter a new password');
+      return;
+    }
+    if (!confirmPassword.trim()) {
+      toast.error('Please confirm your password');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
+    
     setResetLoading(true);
-    const result = await resetPassword(resetEmail.trim(), newPassword.trim());
+    const result = await resetPassword(resetEmail.trim(), newPassword.trim(), confirmPassword.trim());
     setResetLoading(false);
+
     if (result.success) {
       toast.success('Password updated successfully');
-      setForgotPasswordOpen(false);
+      setResetSummary(result.resetSummary);
+      setShowSummary(true);
+      // Reset form
       setResetEmail('');
       setNewPassword('');
+      setConfirmPassword('');
     } else {
       toast.error(result.error || 'Failed to reset password');
     }
+  };
+
+  const handleCloseSummary = () => {
+    setShowSummary(false);
+    setResetSummary(null);
+    setForgotPasswordOpen(false);
   };
 
   return (
@@ -161,50 +188,90 @@ const LoginPage = () => {
 
       {/* Forgot Password Dialog */}
       <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              Enter your admin email address and a new password to reset your credentials.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="reset_email">Admin Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="reset_email"
-                  type="email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="Enter your admin email"
-                  className="pl-10"
-                />
+        <DialogContent className="max-w-md">
+          {!showSummary ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Reset Admin Password</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset_email">Admin Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="reset_email"
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="Type email"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new_password">New Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="new_password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password (min. 6 characters)"
+                      className="pl-10"
+                    />
+                  </div>
+                  {newPassword && newPassword.length < 6 && (
+                    <p className="text-xs text-red-500">Password must be at least 6 characters</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirm_password">Confirm Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="confirm_password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password"
+                      className="pl-10"
+                    />
+                  </div>
+                  {confirmPassword && newPassword !== confirmPassword && (
+                    <p className="text-xs text-red-500">Passwords do not match</p>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new_password">New Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="new_password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="pl-10"
-                />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>Cancel</Button>
+                <Button onClick={handleResetPassword} disabled={resetLoading}>
+                  {resetLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Reset Password
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Password Reset Complete</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                {resetSummary && (
+                  <PasswordResetSummary
+                    email={resetSummary.email}
+                    resetDate={resetSummary.resetDate}
+                    resetTime={resetSummary.resetTime}
+                    adminNotified={resetSummary.adminNotified}
+                    onClose={handleCloseSummary}
+                  />
+                )}
               </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>Cancel</Button>
-            <Button onClick={handleResetPassword} disabled={resetLoading}>
-              {resetLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Reset Password
-            </Button>
-          </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
