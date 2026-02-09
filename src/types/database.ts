@@ -161,4 +161,5 @@ export const TEAM_NAME_BY_LEVEL: Record<CompetitionLevel, string> = {
 export const RACE_TYPE_LABELS: Record<string, string> = {
   short_race: 'Short Race',
   long_race: 'Long Race',
+  field_event: 'Field Event',
 };

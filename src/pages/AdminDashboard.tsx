@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useGames, useCreateGame, useUpdateGame, useDeleteGame } from '@/hooks/useGames';
@@ -22,13 +22,36 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { 
   Game, School, Participant, GameCategory, CompetitionLevel, Gender, SchoolLevel,
-  CATEGORY_LABELS, LEVEL_LABELS, GENDER_LABELS, SCHOOL_LEVEL_LABELS
+  CATEGORY_LABELS, LEVEL_LABELS, GENDER_LABELS, SCHOOL_LEVEL_LABELS, RACE_TYPE_LABELS
 } from '@/types/database';
 import { 
   Plus, Pencil, Trash2, LogOut, Home, Trophy, Users, 
   MapPin, Target, Clock, CheckCircle2, Loader2, Timer, BarChart3,
-  FileText, Award, Swords
+  FileText, Award, Swords, Search
 } from 'lucide-react';
+
+// Time parsing: accepts "12.06", "0.12.06", "0:12.06", "1:23.45"
+const parseTimeInput = (input: string): number | null => {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(/[:.]/);
+  if (parts.length === 3) {
+    const mins = parseInt(parts[0]) || 0;
+    const secs = parseInt(parts[1]) || 0;
+    const cs = parseInt(parts[2]) || 0;
+    return mins * 60 + secs + cs / 100;
+  }
+  const num = parseFloat(trimmed);
+  return isNaN(num) ? null : num;
+};
+
+const formatTimeDisplay = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  const wholeSecs = Math.floor(remaining);
+  const cs = Math.round((remaining - wholeSecs) * 100);
+  return `${mins}.${wholeSecs.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -83,21 +106,36 @@ const AdminDashboard = () => {
   const [selectedGameForQualify, setSelectedGameForQualify] = useState<Game | null>(null);
   const [selectedQualifiers, setSelectedQualifiers] = useState<string[]>([]);
   
-  // Filters
+  // Games tab filters
   const [filterCategory, setFilterCategory] = useState<GameCategory | 'all'>('all');
+  const [filterGender, setFilterGender] = useState<Gender | 'all'>('all');
+  const [gameSearchText, setGameSearchText] = useState('');
   const [filterGame, setFilterGame] = useState<string>('all');
   const [heatGameId, setHeatGameId] = useState<string>('');
   const [matchGameId, setMatchGameId] = useState<string>('');
 
-  // Form state
+  // Game form state
   const [gameFormGender, setGameFormGender] = useState<Gender>('boys');
   const [gameFormSchoolLevel, setGameFormSchoolLevel] = useState<SchoolLevel>('primary');
   const [gameFormCategory, setGameFormCategory] = useState<GameCategory>('ball_games');
   const [gameFormLevel, setGameFormLevel] = useState<CompetitionLevel>('zone');
   const [gameFormRaceType, setGameFormRaceType] = useState<string>('');
+  const [gameFormChampionshipId, setGameFormChampionshipId] = useState<string>('');
+
+  // Participant form state
   const [participantFormGender, setParticipantFormGender] = useState<Gender>('boys');
-  const [participantFormSchoolId, setParticipantFormSchoolId] = useState<string>('');
   const [participantFormGameId, setParticipantFormGameId] = useState<string>('');
+  const [participantGameSearch, setParticipantGameSearch] = useState('');
+  const [participantGameCatFilter, setParticipantGameCatFilter] = useState<GameCategory | 'all'>('all');
+  const [participantGameGenderFilter, setParticipantGameGenderFilter] = useState<Gender | 'all'>('all');
+
+  // Inline school fields for participant form
+  const [schoolNameInput, setSchoolNameInput] = useState('');
+  const [schoolZoneInput, setSchoolZoneInput] = useState('');
+  const [schoolSubcountyInput, setSchoolSubcountyInput] = useState('');
+  const [schoolCountyInput, setSchoolCountyInput] = useState('');
+  const [schoolRegionInput, setSchoolRegionInput] = useState('');
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('');
   
   // Championship form
   const [champLevel, setChampLevel] = useState<CompetitionLevel>('zone');
@@ -112,6 +150,7 @@ const AdminDashboard = () => {
   // Heat participant form
   const [hpHeatId, setHpHeatId] = useState<string>('');
   const [hpParticipantId, setHpParticipantId] = useState<string>('');
+  const [hpParticipantSearch, setHpParticipantSearch] = useState('');
   
   // Match form
   const [matchFormGameId, setMatchFormGameId] = useState<string>('');
@@ -126,6 +165,35 @@ const AdminDashboard = () => {
   // Match pools data
   const { data: matchPoolsForGame = [] } = useMatchPools(matchGameId || undefined);
 
+  // Matching schools for autocomplete
+  const matchingSchools = useMemo(() => {
+    if (!schoolNameInput.trim() || selectedSchoolId) return [];
+    return schools.filter(s => s.name.toLowerCase().includes(schoolNameInput.toLowerCase())).slice(0, 5);
+  }, [schools, schoolNameInput, selectedSchoolId]);
+
+  // Filtered games for participant form
+  const filteredGamesForParticipant = useMemo(() => {
+    let filtered = games;
+    if (participantGameCatFilter !== 'all') filtered = filtered.filter(g => g.category === participantGameCatFilter);
+    if (participantGameGenderFilter !== 'all') filtered = filtered.filter(g => g.gender === participantGameGenderFilter);
+    if (participantGameSearch.trim()) {
+      const search = participantGameSearch.toLowerCase();
+      filtered = filtered.filter(g => g.name.toLowerCase().includes(search));
+    }
+    return filtered;
+  }, [games, participantGameCatFilter, participantGameGenderFilter, participantGameSearch]);
+
+  // Heat participants search
+  const filteredHeatParticipants = useMemo(() => {
+    const gameParticipants = participants.filter(p => p.game_id === heatGameId);
+    if (!hpParticipantSearch.trim()) return gameParticipants;
+    const search = hpParticipantSearch.toLowerCase();
+    return gameParticipants.filter(p =>
+      `${p.first_name} ${p.last_name}`.toLowerCase().includes(search) ||
+      p.school?.name?.toLowerCase().includes(search)
+    );
+  }, [participants, heatGameId, hpParticipantSearch]);
+
   useEffect(() => {
     if (!authLoading && !isAdmin) navigate('/login');
   }, [isAdmin, authLoading, navigate]);
@@ -137,24 +205,36 @@ const AdminDashboard = () => {
       setGameFormCategory(editingGame.category);
       setGameFormLevel(editingGame.level);
       setGameFormRaceType(editingGame.race_type || '');
+      setGameFormChampionshipId(editingGame.championship_id || '');
     } else {
       setGameFormGender('boys');
       setGameFormSchoolLevel('primary');
       setGameFormCategory('ball_games');
       setGameFormLevel('zone');
       setGameFormRaceType('');
+      setGameFormChampionshipId('');
     }
   }, [editingGame]);
 
   useEffect(() => {
     if (editingParticipant) {
       setParticipantFormGender(editingParticipant.gender);
-      setParticipantFormSchoolId(editingParticipant.school_id);
       setParticipantFormGameId(editingParticipant.game_id);
+      setSelectedSchoolId(editingParticipant.school_id);
+      setSchoolNameInput(editingParticipant.school?.name || '');
+      setSchoolZoneInput(editingParticipant.school?.zone || '');
+      setSchoolSubcountyInput(editingParticipant.school?.subcounty || '');
+      setSchoolCountyInput(editingParticipant.school?.county || '');
+      setSchoolRegionInput(editingParticipant.school?.region || '');
     } else {
       setParticipantFormGender('boys');
-      setParticipantFormSchoolId('');
       setParticipantFormGameId('');
+      setSelectedSchoolId('');
+      setSchoolNameInput('');
+      setSchoolZoneInput('');
+      setSchoolSubcountyInput('');
+      setSchoolCountyInput('');
+      setSchoolRegionInput('');
     }
   }, [editingParticipant]);
 
@@ -171,6 +251,7 @@ const AdminDashboard = () => {
       is_timed: formData.get('is_timed') === 'true',
       max_qualifiers: parseInt(formData.get('max_qualifiers') as string) || 5,
       race_type: gameFormRaceType || null,
+      championship_id: gameFormChampionshipId || null,
     };
     try {
       if (editingGame) {
@@ -208,13 +289,44 @@ const AdminDashboard = () => {
   };
 
   const handleSaveParticipant = async (formData: FormData) => {
+    let schoolId = selectedSchoolId;
+    
+    // If no existing school selected, create or find by name
+    if (!schoolId && schoolNameInput.trim()) {
+      const existing = schools.find(s => s.name.toLowerCase() === schoolNameInput.trim().toLowerCase());
+      if (existing) {
+        schoolId = existing.id;
+      } else {
+        try {
+          const newSchool = await createSchool.mutateAsync({
+            name: schoolNameInput.trim(),
+            zone: schoolZoneInput.trim() || 'TBD',
+            subcounty: schoolSubcountyInput.trim() || 'TBD',
+            county: schoolCountyInput.trim() || 'TBD',
+            region: schoolRegionInput.trim() || 'TBD',
+            country: 'Kenya',
+          });
+          schoolId = newSchool.id;
+        } catch {
+          toast.error('Failed to create school');
+          return;
+        }
+      }
+    }
+    
+    if (!schoolId) { toast.error('Please provide a school name'); return; }
+    if (!participantFormGameId) { toast.error('Please select a game'); return; }
+
+    const timeInput = formData.get('time_taken') as string;
+    const timeTaken = timeInput ? parseTimeInput(timeInput) : undefined;
+
     const data = {
       first_name: formData.get('first_name') as string,
       last_name: formData.get('last_name') as string,
-      school_id: participantFormSchoolId,
+      school_id: schoolId,
       game_id: participantFormGameId,
       gender: participantFormGender,
-      time_taken: formData.get('time_taken') ? parseFloat(formData.get('time_taken') as string) : undefined,
+      time_taken: timeTaken ?? undefined,
       position: formData.get('position') ? parseInt(formData.get('position') as string) : undefined,
       score: formData.get('score') ? parseFloat(formData.get('score') as string) : undefined,
       is_qualified: formData.get('is_qualified') === 'true',
@@ -223,14 +335,14 @@ const AdminDashboard = () => {
     try {
       if (editingParticipant) {
         await updateParticipant.mutateAsync({ id: editingParticipant.id, ...data });
-        toast.success('Participant updated');
+        toast.success('Result recorded');
       } else {
         await createParticipant.mutateAsync(data);
-        toast.success('Participant added');
+        toast.success('Result recorded');
       }
       setParticipantDialog(false);
       setEditingParticipant(null);
-    } catch { toast.error('Failed to save participant'); }
+    } catch { toast.error('Failed to save'); }
   };
 
   const handleDelete = async () => {
@@ -309,11 +421,13 @@ const AdminDashboard = () => {
   };
 
   const handleAddHeatParticipant = async (formData: FormData) => {
+    const timeInput = formData.get('time_taken') as string;
+    const timeTaken = timeInput ? parseTimeInput(timeInput) : undefined;
     try {
       await addHeatParticipant.mutateAsync({
         heat_id: hpHeatId,
         participant_id: hpParticipantId,
-        time_taken: formData.get('time_taken') ? parseFloat(formData.get('time_taken') as string) : undefined,
+        time_taken: timeTaken ?? undefined,
         position: formData.get('position') ? parseInt(formData.get('position') as string) : undefined,
         is_qualified_for_final: formData.get('is_qualified_for_final') === 'true',
       });
@@ -347,15 +461,33 @@ const AdminDashboard = () => {
     } catch { toast.error('Failed to save match'); }
   };
 
-  const filteredGames = filterCategory === 'all' ? games : games.filter(g => g.category === filterCategory);
+  // Filtered games with category + gender + search
+  const filteredGames = useMemo(() => {
+    let result = games;
+    if (filterCategory !== 'all') result = result.filter(g => g.category === filterCategory);
+    if (filterGender !== 'all') result = result.filter(g => g.gender === filterGender);
+    if (gameSearchText.trim()) {
+      const search = gameSearchText.toLowerCase();
+      result = result.filter(g => g.name.toLowerCase().includes(search));
+    }
+    return result;
+  }, [games, filterCategory, filterGender, gameSearchText]);
+
   const filteredParticipants = filterGame === 'all' ? participants : participants.filter(p => p.game_id === filterGame);
   const athleticsGames = games.filter(g => g.category === 'athletics');
   const ballGames = games.filter(g => g.category === 'ball_games');
+
+  // Get championship name for a game
+  const getChampionshipName = (championshipId?: string) => {
+    if (!championshipId) return null;
+    return championships.find(c => c.id === championshipId)?.name || null;
+  };
 
   if (authLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-secondary" /></div>;
   if (!isAdmin) return null;
 
   const isLoading = gamesLoading || schoolsLoading || participantsLoading;
+  const selectedHeatGame = games.find(g => g.id === heatGameId);
 
   return (
     <div className="min-h-screen bg-background">
@@ -422,7 +554,7 @@ const AdminDashboard = () => {
           <Tabs defaultValue="games" className="space-y-4">
             <TabsList className="bg-muted flex-wrap h-auto gap-1">
               <TabsTrigger value="games" className="gap-1"><Target className="w-4 h-4" />Games</TabsTrigger>
-              <TabsTrigger value="participants" className="gap-1"><Users className="w-4 h-4" />Participants</TabsTrigger>
+              <TabsTrigger value="participants" className="gap-1"><Users className="w-4 h-4" />Record Results</TabsTrigger>
               <TabsTrigger value="schools" className="gap-1"><MapPin className="w-4 h-4" />Schools</TabsTrigger>
               <TabsTrigger value="heats" className="gap-1"><Timer className="w-4 h-4" />Heats</TabsTrigger>
               <TabsTrigger value="pooling" className="gap-1"><Swords className="w-4 h-4" />Pooling</TabsTrigger>
@@ -432,7 +564,11 @@ const AdminDashboard = () => {
 
             {/* ===== GAMES TAB ===== */}
             <TabsContent value="games" className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px] max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Search games..." value={gameSearchText} onChange={e => setGameSearchText(e.target.value)} className="pl-9" />
+                </div>
                 <Select value={filterCategory} onValueChange={(v) => setFilterCategory(v as GameCategory | 'all')}>
                   <SelectTrigger className="w-40"><SelectValue placeholder="Category" /></SelectTrigger>
                   <SelectContent>
@@ -443,13 +579,22 @@ const AdminDashboard = () => {
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={() => { setEditingGame(null); setGameDialog(true); }}><Plus className="w-4 h-4 mr-1" />Add Game</Button>
+                <Select value={filterGender} onValueChange={(v) => setFilterGender(v as Gender | 'all')}>
+                  <SelectTrigger className="w-32"><SelectValue placeholder="Gender" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Gender</SelectItem>
+                    <SelectItem value="boys">Boys</SelectItem>
+                    <SelectItem value="girls">Girls</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={() => { setEditingGame(null); setGameDialog(true); }} className="ml-auto"><Plus className="w-4 h-4 mr-1" />Add Game</Button>
               </div>
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead>Name</TableHead>
+                      <TableHead>Championship</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Level</TableHead>
                       <TableHead>Gender</TableHead>
@@ -460,15 +605,18 @@ const AdminDashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {filteredGames.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No games found</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No games found</TableCell></TableRow>
                     ) : filteredGames.map(game => (
                       <TableRow key={game.id}>
                         <TableCell className="font-medium">{game.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{getChampionshipName(game.championship_id) || '-'}</TableCell>
                         <TableCell><Badge variant="outline">{CATEGORY_LABELS[game.category]}</Badge></TableCell>
                         <TableCell><Badge variant="secondary">{LEVEL_LABELS[game.level]}</Badge></TableCell>
                         <TableCell><Badge variant="outline" className={game.gender === 'boys' ? 'border-blue-400 text-blue-600' : 'border-pink-400 text-pink-600'}>{GENDER_LABELS[game.gender]}</Badge></TableCell>
                         <TableCell><Badge variant="outline">{SCHOOL_LEVEL_LABELS[game.school_level]}</Badge></TableCell>
-                        <TableCell>{game.is_timed ? <span className="flex items-center gap-1 text-sm"><Clock className="w-3 h-3" />Timed</span> : game.race_type || 'Standard'}</TableCell>
+                        <TableCell>
+                          {game.race_type === 'field_event' ? 'Field Event' : game.is_timed ? <span className="flex items-center gap-1 text-sm"><Clock className="w-3 h-3" />Timed</span> : game.race_type ? RACE_TYPE_LABELS[game.race_type] || game.race_type : 'Standard'}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             {game.is_timed && <Button variant="outline" size="sm" onClick={() => rankByTime.mutateAsync(game.id).then(() => toast.success('Ranked'))}><Timer className="w-3 h-3 mr-1" />Rank</Button>}
@@ -484,7 +632,7 @@ const AdminDashboard = () => {
               </div>
             </TabsContent>
 
-            {/* ===== PARTICIPANTS TAB ===== */}
+            {/* ===== RECORD RESULTS TAB ===== */}
             <TabsContent value="participants" className="space-y-4">
               <div className="flex items-center justify-between">
                 <Select value={filterGame} onValueChange={setFilterGame}>
@@ -494,20 +642,20 @@ const AdminDashboard = () => {
                     {games.map(g => <SelectItem key={g.id} value={g.id}>{g.name} ({GENDER_LABELS[g.gender]} - {SCHOOL_LEVEL_LABELS[g.school_level]})</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button onClick={() => { setEditingParticipant(null); setParticipantDialog(true); }}><Plus className="w-4 h-4 mr-1" />Add Participant</Button>
+                <Button onClick={() => { setEditingParticipant(null); setParticipantDialog(true); }}><Plus className="w-4 h-4 mr-1" />Record Result</Button>
               </div>
               <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead>Name</TableHead><TableHead>Gender</TableHead><TableHead>School</TableHead>
-                      <TableHead>Game</TableHead><TableHead>Pos</TableHead><TableHead>Score</TableHead>
+                      <TableHead>Game</TableHead><TableHead>Pos</TableHead><TableHead>Time</TableHead><TableHead>Score</TableHead>
                       <TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredParticipants.length === 0 ? (
-                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No participants</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No results recorded</TableCell></TableRow>
                     ) : filteredParticipants.map(p => (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{p.first_name} {p.last_name}</TableCell>
@@ -515,6 +663,7 @@ const AdminDashboard = () => {
                         <TableCell>{p.school?.name || '-'}</TableCell>
                         <TableCell><Badge variant="outline">{p.game?.name}</Badge></TableCell>
                         <TableCell>{p.position || '-'}</TableCell>
+                        <TableCell className="font-mono">{p.time_taken ? formatTimeDisplay(p.time_taken) : '-'}</TableCell>
                         <TableCell>{p.score ?? '-'}</TableCell>
                         <TableCell>{p.is_qualified ? <Badge className="bg-success text-success-foreground">Qualified</Badge> : <Badge variant="outline">Pending</Badge>}</TableCell>
                         <TableCell className="text-right">
@@ -566,16 +715,24 @@ const AdminDashboard = () => {
 
             {/* ===== HEATS TAB ===== */}
             <TabsContent value="heats" className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Select value={heatGameId} onValueChange={setHeatGameId}>
                   <SelectTrigger className="w-60"><SelectValue placeholder="Select athletics game" /></SelectTrigger>
                   <SelectContent>
-                    {athleticsGames.map(g => <SelectItem key={g.id} value={g.id}>{g.name} ({GENDER_LABELS[g.gender]})</SelectItem>)}
+                    {athleticsGames.map(g => <SelectItem key={g.id} value={g.id}>{g.name} ({GENDER_LABELS[g.gender]} - {SCHOOL_LEVEL_LABELS[g.school_level]})</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <div className="flex gap-2">
+                {selectedHeatGame && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{CATEGORY_LABELS[selectedHeatGame.category]}</Badge>
+                    <Badge variant="outline" className={selectedHeatGame.gender === 'boys' ? 'border-blue-400 text-blue-600' : 'border-pink-400 text-pink-600'}>{GENDER_LABELS[selectedHeatGame.gender]}</Badge>
+                    <Badge variant="outline">{SCHOOL_LEVEL_LABELS[selectedHeatGame.school_level]}</Badge>
+                    {selectedHeatGame.race_type && <Badge variant="outline">{RACE_TYPE_LABELS[selectedHeatGame.race_type] || selectedHeatGame.race_type}</Badge>}
+                  </div>
+                )}
+                <div className="flex gap-2 ml-auto">
                   <Button onClick={() => { setHeatFormGameId(heatGameId); setHeatDialog(true); }} disabled={!heatGameId}><Plus className="w-4 h-4 mr-1" />Add Heat</Button>
-                  <Button variant="outline" onClick={() => { setHpHeatId(''); setHeatParticipantDialog(true); }} disabled={!heatGameId}><Plus className="w-4 h-4 mr-1" />Add to Heat</Button>
+                  <Button variant="outline" onClick={() => { setHpParticipantSearch(''); setHpParticipantId(''); setHeatParticipantDialog(true); }} disabled={!heatGameId}><Plus className="w-4 h-4 mr-1" />Add to Heat</Button>
                 </div>
               </div>
               {heatsForGame.length > 0 ? (
@@ -600,7 +757,7 @@ const AdminDashboard = () => {
                                 <TableCell>{hp.position || '-'}</TableCell>
                                 <TableCell className="font-medium">{hp.participant?.first_name} {hp.participant?.last_name}</TableCell>
                                 <TableCell>{hp.participant?.school?.name || '-'}</TableCell>
-                                <TableCell>{hp.time_taken ? `${hp.time_taken}s` : '-'}</TableCell>
+                                <TableCell className="font-mono">{hp.time_taken ? formatTimeDisplay(hp.time_taken) : '-'}</TableCell>
                                 <TableCell>{hp.is_qualified_for_final ? <Badge className="bg-success text-success-foreground">Yes</Badge> : '-'}</TableCell>
                                 <TableCell className="text-right">
                                   <Button variant="ghost" size="icon" onClick={() => setDeleteDialog({ type: 'heat_participant', id: hp.id })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
@@ -650,7 +807,7 @@ const AdminDashboard = () => {
                           <TableCell>{m.winner_school?.name || 'TBD'}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => { setEditingMatchId(m.id); setMatchFormGameId(m.game_id); setMatchDialog(true); }}><Pencil className="w-4 h-4" /></Button>
+                              <Button variant="outline" size="sm" onClick={() => { setEditingMatchId(m.id); setMatchFormGameId(matchGameId); setMatchDialog(true); }}>Update</Button>
                               <Button variant="ghost" size="icon" onClick={() => setDeleteDialog({ type: 'match', id: m.id })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                             </div>
                           </TableCell>
@@ -660,7 +817,7 @@ const AdminDashboard = () => {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">{matchGameId ? 'No matches yet. Create one!' : 'Select a ball game to manage pooling'}</div>
+                <div className="text-center py-8 text-muted-foreground">{matchGameId ? 'No matches yet' : 'Select a ball game to manage matches'}</div>
               )}
             </TabsContent>
 
@@ -681,7 +838,7 @@ const AdminDashboard = () => {
                           <Badge variant="secondary">{LEVEL_LABELS[c.level]}</Badge>
                           {c.location && <Badge variant="outline">{c.location}</Badge>}
                         </div>
-                        {c.start_date && <p className="text-sm text-muted-foreground mt-2">{c.start_date} — {c.end_date || 'TBD'}</p>}
+                        {c.start_date && <p className="text-sm text-muted-foreground mt-2">{c.start_date}{c.end_date ? ` — ${c.end_date}` : ''}</p>}
                         {c.description && <p className="text-sm mt-2">{c.description}</p>}
                       </div>
                       <Button variant="ghost" size="icon" onClick={() => setDeleteDialog({ type: 'championship', id: c.id })}><Trash2 className="w-4 h-4 text-destructive" /></Button>
@@ -721,14 +878,27 @@ const AdminDashboard = () => {
 
       {/* Game Dialog */}
       <Dialog open={gameDialog} onOpenChange={setGameDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingGame ? 'Edit Game' : 'Add New Game'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveGame(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
               <div className="space-y-2"><Label htmlFor="name">Game Name</Label><Input id="name" name="name" defaultValue={editingGame?.name} required /></div>
+              
+              {championships.length > 0 && (
+                <div className="space-y-2"><Label>Championship</Label>
+                  <Select value={gameFormChampionshipId} onValueChange={setGameFormChampionshipId}>
+                    <SelectTrigger><SelectValue placeholder="Select championship (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Championship</SelectItem>
+                      {championships.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Category</Label>
-                  <Select value={gameFormCategory} onValueChange={(v) => setGameFormCategory(v as GameCategory)}>
+                  <Select value={gameFormCategory} onValueChange={(v) => { setGameFormCategory(v as GameCategory); setGameFormRaceType(''); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent><SelectItem value="ball_games">Ball Games</SelectItem><SelectItem value="athletics">Athletics</SelectItem><SelectItem value="music">Music</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent>
                   </Select>
@@ -754,22 +924,33 @@ const AdminDashboard = () => {
                   </Select>
                 </div>
               </div>
+
+              {/* Athletics-specific: Track Event vs Field Event */}
               {gameFormCategory === 'athletics' && (
-                <div className="space-y-2"><Label>Race Type</Label>
-                  <Select value={gameFormRaceType} onValueChange={setGameFormRaceType}>
-                    <SelectTrigger><SelectValue placeholder="Select race type" /></SelectTrigger>
-                    <SelectContent><SelectItem value="short_race">Short Race</SelectItem><SelectItem value="long_race">Long Race</SelectItem></SelectContent>
+                <div className="space-y-2"><Label>Event Type</Label>
+                  <Select value={gameFormRaceType || 'track'} onValueChange={(v) => setGameFormRaceType(v === 'track' ? '' : v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="track">Track Event</SelectItem>
+                      <SelectItem value="short_race">Short Race</SelectItem>
+                      <SelectItem value="long_race">Long Race</SelectItem>
+                      <SelectItem value="field_event">Field Event</SelectItem>
+                    </SelectContent>
                   </Select>
                 </div>
               )}
+
               <div className="space-y-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" defaultValue={editingGame?.description || ''} /></div>
+              
               <div className="flex items-center gap-2">
                 <Switch id="is_timed" defaultChecked={editingGame?.is_timed} onCheckedChange={(checked) => {
                   const input = document.querySelector('input[name="is_timed"]') as HTMLInputElement;
                   if (input) input.value = checked ? 'true' : 'false';
                 }} />
                 <input type="hidden" name="is_timed" defaultValue={editingGame?.is_timed ? 'true' : 'false'} />
-                <Label htmlFor="is_timed">Timed Event</Label>
+                <Label htmlFor="is_timed">
+                  {gameFormRaceType === 'field_event' ? 'Measurement Taken' : 'Timed Event'}
+                </Label>
               </div>
               <div className="space-y-2"><Label htmlFor="max_qualifiers">Max Qualifiers</Label><Input id="max_qualifiers" name="max_qualifiers" type="number" min="1" defaultValue={editingGame?.max_qualifiers || 5} /></div>
             </div>
@@ -800,10 +981,10 @@ const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Participant Dialog */}
+      {/* Participant / Record Results Dialog */}
       <Dialog open={participantDialog} onOpenChange={setParticipantDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editingParticipant ? 'Edit Participant' : 'Add New Participant'}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingParticipant ? 'Edit Result' : 'Record Result'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveParticipant(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
@@ -816,21 +997,78 @@ const AdminDashboard = () => {
                   <SelectContent><SelectItem value="boys">Boy</SelectItem><SelectItem value="girls">Girl</SelectItem></SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>School</Label>
-                <Select value={participantFormSchoolId} onValueChange={setParticipantFormSchoolId}>
-                  <SelectTrigger><SelectValue placeholder="Select school" /></SelectTrigger>
-                  <SelectContent>{schools.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-                </Select>
+
+              {/* Inline School */}
+              <div className="space-y-2 border border-border rounded-lg p-3">
+                <Label className="text-base font-semibold">School</Label>
+                <div className="relative">
+                  <Input 
+                    placeholder="Type school name..." 
+                    value={schoolNameInput} 
+                    onChange={(e) => { 
+                      setSchoolNameInput(e.target.value); 
+                      setSelectedSchoolId(''); 
+                    }} 
+                    required 
+                  />
+                  {matchingSchools.length > 0 && !selectedSchoolId && (
+                    <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                      {matchingSchools.map(s => (
+                        <div key={s.id} className="px-3 py-2 hover:bg-accent cursor-pointer text-sm" onClick={() => {
+                          setSelectedSchoolId(s.id);
+                          setSchoolNameInput(s.name);
+                          setSchoolZoneInput(s.zone);
+                          setSchoolSubcountyInput(s.subcounty);
+                          setSchoolCountyInput(s.county);
+                          setSchoolRegionInput(s.region);
+                        }}>
+                          <span className="font-medium">{s.name}</span>
+                          <span className="text-muted-foreground ml-2 text-xs">{s.zone}, {s.subcounty}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {!selectedSchoolId && schoolNameInput.trim() && (
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="space-y-1"><Label className="text-xs text-muted-foreground">Zone (optional)</Label><Input value={schoolZoneInput} onChange={e => setSchoolZoneInput(e.target.value)} placeholder="Zone" className="h-8 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-xs text-muted-foreground">Sub-County (optional)</Label><Input value={schoolSubcountyInput} onChange={e => setSchoolSubcountyInput(e.target.value)} placeholder="Sub-County" className="h-8 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-xs text-muted-foreground">County (optional)</Label><Input value={schoolCountyInput} onChange={e => setSchoolCountyInput(e.target.value)} placeholder="County" className="h-8 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-xs text-muted-foreground">Region (optional)</Label><Input value={schoolRegionInput} onChange={e => setSchoolRegionInput(e.target.value)} placeholder="Region" className="h-8 text-sm" /></div>
+                  </div>
+                )}
               </div>
-              <div className="space-y-2"><Label>Game</Label>
+
+              {/* Searchable Game Select */}
+              <div className="space-y-2">
+                <Label>Game</Label>
+                <div className="flex gap-2 mb-2">
+                  <Select value={participantGameCatFilter} onValueChange={(v) => setParticipantGameCatFilter(v as GameCategory | 'all')}>
+                    <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
+                    <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="ball_games">Ball Games</SelectItem><SelectItem value="athletics">Athletics</SelectItem><SelectItem value="music">Music</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent>
+                  </Select>
+                  <Select value={participantGameGenderFilter} onValueChange={(v) => setParticipantGameGenderFilter(v as Gender | 'all')}>
+                    <SelectTrigger className="w-28 h-8 text-xs"><SelectValue placeholder="Gender" /></SelectTrigger>
+                    <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="boys">Boys</SelectItem><SelectItem value="girls">Girls</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                  <Input placeholder="Search games..." value={participantGameSearch} onChange={e => setParticipantGameSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+                </div>
                 <Select value={participantFormGameId} onValueChange={setParticipantFormGameId}>
                   <SelectTrigger><SelectValue placeholder="Select game" /></SelectTrigger>
-                  <SelectContent>{games.map(g => <SelectItem key={g.id} value={g.id}>{g.name} ({GENDER_LABELS[g.gender]} - {SCHOOL_LEVEL_LABELS[g.school_level]})</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {filteredGamesForParticipant.map(g => (
+                      <SelectItem key={g.id} value={g.id}>{g.name} ({GENDER_LABELS[g.gender]} - {SCHOOL_LEVEL_LABELS[g.school_level]})</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2"><Label htmlFor="position">Position</Label><Input id="position" name="position" type="number" min="1" defaultValue={editingParticipant?.position || ''} /></div>
-                <div className="space-y-2"><Label htmlFor="time_taken">Time (s)</Label><Input id="time_taken" name="time_taken" type="number" step="0.001" defaultValue={editingParticipant?.time_taken || ''} /></div>
+                <div className="space-y-2"><Label htmlFor="time_taken">Time (e.g. 0.12.06)</Label><Input id="time_taken" name="time_taken" placeholder="0.12.06" defaultValue={editingParticipant?.time_taken ? formatTimeDisplay(editingParticipant.time_taken) : ''} /></div>
                 <div className="space-y-2"><Label htmlFor="score">Score</Label><Input id="score" name="score" type="number" step="0.01" defaultValue={editingParticipant?.score || ''} /></div>
               </div>
               <div className="flex items-center gap-2">
@@ -901,6 +1139,14 @@ const AdminDashboard = () => {
       <Dialog open={heatDialog} onOpenChange={setHeatDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>Create Heat</DialogTitle></DialogHeader>
+          {selectedHeatGame && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              <Badge variant="outline">{CATEGORY_LABELS[selectedHeatGame.category]}</Badge>
+              <Badge variant="outline" className={selectedHeatGame.gender === 'boys' ? 'border-blue-400 text-blue-600' : 'border-pink-400 text-pink-600'}>{GENDER_LABELS[selectedHeatGame.gender]}</Badge>
+              <Badge variant="outline">{SCHOOL_LEVEL_LABELS[selectedHeatGame.school_level]}</Badge>
+              <Badge variant="outline">{selectedHeatGame.name}</Badge>
+            </div>
+          )}
           <form onSubmit={(e) => { e.preventDefault(); handleCreateHeat(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
               <div className="space-y-2"><Label>Type</Label>
@@ -916,9 +1162,9 @@ const AdminDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Heat Participant Dialog */}
+      {/* Heat Participant Dialog - with text search */}
       <Dialog open={heatParticipantDialog} onOpenChange={setHeatParticipantDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Participant to Heat</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleAddHeatParticipant(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
@@ -928,14 +1174,29 @@ const AdminDashboard = () => {
                   <SelectContent>{heatsForGame.map(h => <SelectItem key={h.id} value={h.id}>{h.heat_type === 'final' ? 'Final' : `Heat ${h.heat_number}`}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Participant</Label>
-                <Select value={hpParticipantId} onValueChange={setHpParticipantId}>
-                  <SelectTrigger><SelectValue placeholder="Select participant" /></SelectTrigger>
-                  <SelectContent>{participants.filter(p => p.game_id === heatGameId).map(p => <SelectItem key={p.id} value={p.id}>{p.first_name} {p.last_name} ({p.school?.name})</SelectItem>)}</SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <Label>Participant (type to search)</Label>
+                <Input 
+                  placeholder="Search by name or school..." 
+                  value={hpParticipantSearch} 
+                  onChange={e => setHpParticipantSearch(e.target.value)} 
+                />
+                <div className="max-h-40 overflow-y-auto border border-border rounded-lg">
+                  {filteredHeatParticipants.length === 0 ? (
+                    <p className="text-center py-3 text-sm text-muted-foreground">No participants found</p>
+                  ) : filteredHeatParticipants.map(p => (
+                    <div 
+                      key={p.id} 
+                      className={`px-3 py-2 cursor-pointer text-sm hover:bg-accent ${hpParticipantId === p.id ? 'bg-accent font-medium' : ''}`}
+                      onClick={() => setHpParticipantId(p.id)}
+                    >
+                      {p.first_name} {p.last_name} <span className="text-muted-foreground">({p.school?.name})</span>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label htmlFor="hp_time">Time (s)</Label><Input id="hp_time" name="time_taken" type="number" step="0.001" /></div>
+                <div className="space-y-2"><Label htmlFor="hp_time">Time (e.g. 0.12.06)</Label><Input id="hp_time" name="time_taken" placeholder="0.12.06" /></div>
                 <div className="space-y-2"><Label htmlFor="hp_pos">Position</Label><Input id="hp_pos" name="position" type="number" min="1" /></div>
               </div>
               <div className="flex items-center gap-2">
@@ -1030,7 +1291,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <div className="text-right text-sm text-muted-foreground">
-                    {p.time_taken && <span>{p.time_taken}s</span>}
+                    {p.time_taken && <span>{formatTimeDisplay(p.time_taken)}</span>}
                     {p.score != null && <span> Score: {p.score}</span>}
                   </div>
                 </div>

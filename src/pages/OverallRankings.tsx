@@ -1,9 +1,10 @@
 import { useGames } from '@/hooks/useGames';
 import { useParticipants } from '@/hooks/useParticipants';
 import { useSchools } from '@/hooks/useSchools';
+import { useChampionships } from '@/hooks/useChampionships';
 import { Navbar } from '@/components/Navbar';
 import { 
-  LEVEL_LABELS, GENDER_LABELS, SCHOOL_LEVEL_LABELS, TEAM_NAME_BY_LEVEL,
+  LEVEL_LABELS, GENDER_LABELS, SCHOOL_LEVEL_LABELS,
   CompetitionLevel, Gender, SchoolLevel 
 } from '@/types/database';
 import { Loader2, Trophy, Medal, BarChart3 } from 'lucide-react';
@@ -36,6 +37,7 @@ const OverallRankings = () => {
   const { data: games = [], isLoading: gamesLoading } = useGames();
   const { data: participants = [], isLoading: participantsLoading } = useParticipants();
   const { data: schools = [], isLoading: schoolsLoading } = useSchools();
+  const { data: championships = [] } = useChampionships();
 
   const [levelFilter, setLevelFilter] = useState<CompetitionLevel | 'all'>('all');
   const [genderFilter, setGenderFilter] = useState<Gender | 'all'>('all');
@@ -43,6 +45,9 @@ const OverallRankings = () => {
   const [locationSearch, setLocationSearch] = useState('');
 
   const isLoading = gamesLoading || participantsLoading || schoolsLoading;
+
+  // Active championship title
+  const activeChampionship = championships.length > 0 ? championships[0] : null;
 
   const teamScores = useMemo(() => {
     const scoreMap = new Map<string, TeamScore>();
@@ -95,7 +100,6 @@ const OverallRankings = () => {
 
     let results = Array.from(scoreMap.values());
     
-    // Filter by location search
     if (locationSearch.trim()) {
       const search = locationSearch.toLowerCase();
       results = results.filter(t =>
@@ -109,59 +113,6 @@ const OverallRankings = () => {
 
     return results.sort((a, b) => b.totalScore - a.totalScore);
   }, [games, participants, schools, levelFilter, genderFilter, schoolLevelFilter, locationSearch]);
-
-  // Best performers
-  const bestBoyPrimary = useMemo(() => {
-    const gameMap = new Map(games.map(g => [g.id, g]));
-    let best: { name: string; score: number; game: string } | null = null;
-    for (const p of participants) {
-      const game = gameMap.get(p.game_id);
-      if (!game || game.gender !== 'boys' || game.school_level !== 'primary') continue;
-      if (p.score && (!best || p.score > best.score)) {
-        best = { name: `${p.first_name} ${p.last_name}`, score: p.score, game: game.name };
-      }
-    }
-    return best;
-  }, [games, participants]);
-
-  const bestGirlPrimary = useMemo(() => {
-    const gameMap = new Map(games.map(g => [g.id, g]));
-    let best: { name: string; score: number; game: string } | null = null;
-    for (const p of participants) {
-      const game = gameMap.get(p.game_id);
-      if (!game || game.gender !== 'girls' || game.school_level !== 'primary') continue;
-      if (p.score && (!best || p.score > best.score)) {
-        best = { name: `${p.first_name} ${p.last_name}`, score: p.score, game: game.name };
-      }
-    }
-    return best;
-  }, [games, participants]);
-
-  const bestBoyJS = useMemo(() => {
-    const gameMap = new Map(games.map(g => [g.id, g]));
-    let best: { name: string; score: number; game: string } | null = null;
-    for (const p of participants) {
-      const game = gameMap.get(p.game_id);
-      if (!game || game.gender !== 'boys' || game.school_level !== 'junior_secondary') continue;
-      if (p.score && (!best || p.score > best.score)) {
-        best = { name: `${p.first_name} ${p.last_name}`, score: p.score, game: game.name };
-      }
-    }
-    return best;
-  }, [games, participants]);
-
-  const bestGirlJS = useMemo(() => {
-    const gameMap = new Map(games.map(g => [g.id, g]));
-    let best: { name: string; score: number; game: string } | null = null;
-    for (const p of participants) {
-      const game = gameMap.get(p.game_id);
-      if (!game || game.gender !== 'girls' || game.school_level !== 'junior_secondary') continue;
-      if (p.score && (!best || p.score > best.score)) {
-        best = { name: `${p.first_name} ${p.last_name}`, score: p.score, game: game.name };
-      }
-    }
-    return best;
-  }, [games, participants]);
 
   const getPositionIcon = (index: number) => {
     if (index === 0) return <Trophy className="w-5 h-5 text-yellow-500" />;
@@ -180,7 +131,10 @@ const OverallRankings = () => {
             <BarChart3 className="w-8 h-8" />
             <h1 className="font-display text-4xl md:text-5xl tracking-wider">OVERALL RANKINGS</h1>
           </div>
-          <p className="text-white/70 mt-2">Grand total scores across all games — follow results from anywhere</p>
+          {activeChampionship && (
+            <p className="text-white/90 text-lg font-display mt-2">{activeChampionship.name}</p>
+          )}
+          <p className="text-white/70 mt-1">Team rankings based on total points across all games</p>
         </div>
       </div>
 
@@ -221,40 +175,6 @@ const OverallRankings = () => {
             className="w-64"
           />
         </div>
-
-        {/* Best Performers */}
-        {(bestBoyPrimary || bestGirlPrimary || bestBoyJS || bestGirlJS) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {bestBoyPrimary && (
-              <div className="bg-card border border-border rounded-xl p-4">
-                <p className="text-xs text-muted-foreground mb-1">🏆 Best Boy (Primary)</p>
-                <p className="font-display text-lg text-foreground">{bestBoyPrimary.name}</p>
-                <p className="text-sm text-secondary">{bestBoyPrimary.game} — {bestBoyPrimary.score} pts</p>
-              </div>
-            )}
-            {bestGirlPrimary && (
-              <div className="bg-card border border-border rounded-xl p-4">
-                <p className="text-xs text-muted-foreground mb-1">🏆 Best Girl (Primary)</p>
-                <p className="font-display text-lg text-foreground">{bestGirlPrimary.name}</p>
-                <p className="text-sm text-secondary">{bestGirlPrimary.game} — {bestGirlPrimary.score} pts</p>
-              </div>
-            )}
-            {bestBoyJS && (
-              <div className="bg-card border border-border rounded-xl p-4">
-                <p className="text-xs text-muted-foreground mb-1">🏆 Best Boy (Jr. Secondary)</p>
-                <p className="font-display text-lg text-foreground">{bestBoyJS.name}</p>
-                <p className="text-sm text-secondary">{bestBoyJS.game} — {bestBoyJS.score} pts</p>
-              </div>
-            )}
-            {bestGirlJS && (
-              <div className="bg-card border border-border rounded-xl p-4">
-                <p className="text-xs text-muted-foreground mb-1">🏆 Best Girl (Jr. Secondary)</p>
-                <p className="font-display text-lg text-foreground">{bestGirlJS.name}</p>
-                <p className="text-sm text-secondary">{bestGirlJS.game} — {bestGirlJS.score} pts</p>
-              </div>
-            )}
-          </div>
-        )}
 
         {isLoading ? (
           <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-secondary" /></div>
