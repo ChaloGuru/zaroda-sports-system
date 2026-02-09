@@ -188,71 +188,119 @@ const LoginPage = () => {
 
       {/* Forgot Password Dialog */}
       <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" aria-describedby="reset-desc">
           {!showSummary ? (
             <>
               <DialogHeader>
                 <DialogTitle>Reset Admin Password</DialogTitle>
+                <p id="reset-desc" className="text-muted-foreground text-sm mt-1">To reset your password, first verify your current username and password.</p>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reset_email">Admin Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="reset_email"
-                      type="email"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      placeholder="Type email"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="new_password">New Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="new_password"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Enter new password (min. 6 characters)"
-                      className="pl-10"
-                    />
-                  </div>
-                  {newPassword && newPassword.length < 6 && (
-                    <p className="text-xs text-red-500">Password must be at least 6 characters</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirm_password">Confirm Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="confirm_password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter password"
-                      className="pl-10"
-                    />
-                  </div>
-                  {confirmPassword && newPassword !== confirmPassword && (
-                    <p className="text-xs text-red-500">Passwords do not match</p>
-                  )}
-                </div>
+                {/* Step 1: Verify current credentials */}
+                {!resetSummary && !resetLoading && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="verify_username">Current Username</Label>
+                      <Input
+                        id="verify_username"
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="Enter current username"
+                        autoComplete="username"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="verify_password">Current Password</Label>
+                      <Input
+                        id="verify_password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        autoComplete="current-password"
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>Cancel</Button>
+                      <Button onClick={async () => {
+                        setResetLoading(true);
+                        const result = await login(username.trim(), password.trim());
+                        setResetLoading(false);
+                        if (result.success) {
+                          setResetSummary({ verified: true });
+                          toast.success('Verified! Now enter your email and new password.');
+                        } else {
+                          toast.error(result.error || 'Invalid credentials');
+                        }
+                      }} disabled={resetLoading || !username || !password}>
+                        {resetLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                        Verify
+                      </Button>
+                    </DialogFooter>
+                  </>
+                )}
+                {/* Step 2: Show reset fields if verified */}
+                {resetSummary?.verified && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="reset_email">Admin Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="reset_email"
+                          type="email"
+                          value={resetEmail}
+                          onChange={(e) => setResetEmail(e.target.value)}
+                          placeholder="Type email"
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_password">New Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="new_password"
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Enter new password (min. 6 characters)"
+                          className="pl-10"
+                        />
+                      </div>
+                      {newPassword && newPassword.length < 6 && (
+                        <p className="text-xs text-red-500">Password must be at least 6 characters</p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm_password">Confirm Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="confirm_password"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Re-enter password"
+                          className="pl-10"
+                        />
+                      </div>
+                      {confirmPassword && newPassword !== confirmPassword && (
+                        <p className="text-xs text-red-500">Passwords do not match</p>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>Cancel</Button>
+                      <Button onClick={handleResetPassword} disabled={resetLoading}>
+                        {resetLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                        Reset Password
+                      </Button>
+                    </DialogFooter>
+                  </>
+                )}
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>Cancel</Button>
-                <Button onClick={handleResetPassword} disabled={resetLoading}>
-                  {resetLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Reset Password
-                </Button>
-              </DialogFooter>
             </>
           ) : (
             <>
