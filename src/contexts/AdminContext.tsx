@@ -62,19 +62,11 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const resetPassword = async (
-    email: string, 
+    email: string,
     newPassword: string,
     confirmPassword: string
   ): Promise<ResetPasswordResult> => {
     try {
-      // Hardcoded email validation
-      const ALLOWED_RESET_EMAIL = 'oduorongo@gmail.com';
-      const ADMIN_NOTIFICATION_EMAIL = 'oduorongo@gmail.com';
-
-      if (email !== ALLOWED_RESET_EMAIL) {
-        return { success: false, error: 'This email is not authorized for password reset' };
-      }
-
       if (newPassword !== confirmPassword) {
         return { success: false, error: 'Passwords do not match' };
       }
@@ -83,15 +75,36 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return { success: false, error: 'Password must be at least 6 characters' };
       }
 
-      // Verify the email belongs to an admin
-      const { data: admin, error: fetchError } = await supabase
-        .from('admins')
-        .select('id, email')
-        .eq('email', email)
-        .single();
+      // Try to find admin by email first; if not found, fallback to username
+      const ident = email.trim();
+      let admin: any = null;
+      let fetchError: any = null;
+
+      if (ident.includes('@')) {
+        const res = await supabase
+          .from('admins')
+          .select('id, email, username')
+          .eq('email', ident)
+          .single();
+        admin = (res as any).data;
+        fetchError = (res as any).error;
+      }
+
+      if (!admin) {
+        // If user typed an email but the DB stores username only (e.g. 'oduorongo'),
+        // try using the part before @ as username. Also try the identifier as-is.
+        const possibleUser = ident.includes('@') ? ident.split('@')[0] : ident;
+        const res2 = await supabase
+          .from('admins')
+          .select('id, email, username')
+          .or(`username.eq.${possibleUser},username.eq.${ident}`)
+          .single();
+        admin = (res2 as any).data;
+        fetchError = (res2 as any).error;
+      }
 
       if (fetchError || !admin) {
-        return { success: false, error: 'No admin account found with that email' };
+        return { success: false, error: 'No admin account found with that email/username' };
       }
 
       // Update password
@@ -104,41 +117,35 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return { success: false, error: 'Failed to update password' };
       }
 
-      // Send notification email to admin
+      // Prepare notification details
       const now = new Date();
-      const resetDate = now.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      const resetDate = now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       });
-      const resetTime = now.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
-      });
-
-      // Send notification
-      await sendPasswordResetNotification({
-        adminEmail: email,
-        resetDate,
-        resetTime,
-        ipAddress: 'local',
-        userAgent: navigator.userAgent
+      const resetTime = now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
       });
 
-      // Log the password reset for admin notification
-      const resetLogEntry = {
-        adminEmail: email,
-        timestamp: now.toISOString(),
-        resetDate,
-        resetTime,
-        action: 'Password Reset',
-        status: 'completed'
-      };
+      const notifyEmail = admin.email || identifier;
 
-      console.log('Password Reset Log:', resetLogEntry);
+      // Send notification (best-effort)
+      try {
+        await sendPasswordResetNotification({
+          adminEmail: notifyEmail,
+          resetDate,
+          resetTime,
+          ipAddress: 'local',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
+        });
+      } catch (e) {
+        console.log('Failed to send password reset notification', e);
+      }
 
-      // Try to send notification (in production, this would be a real email)
+      // Log the password reset for admin notification (best-effort)
       try {
         await supabase
           .from('password_reset_logs')
@@ -146,25 +153,22 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             admin_id: admin.id,
             reset_date: now.toISOString(),
             reset_ip: 'local',
-            status: 'completed'
-          })
-          .catch(() => {
-            // Table might not exist, that's okay
-            console.log('Reset log created (or table does not exist)');
+            status: 'completed',
           });
-      } catch {
-        console.log('Could not log reset to database');
+      } catch (e) {
+        console.log('Could not log reset to database', e);
       }
 
       const resetSummary = {
-        email,
+        email: notifyEmail,
         resetDate,
         resetTime,
-        adminNotified: true
+        adminNotified: !!notifyEmail,
       };
 
       return { success: true, resetSummary };
-    } catch {
+    } catch (err) {
+      console.error('resetPassword error', err);
       return { success: false, error: 'Password reset failed' };
     }
   };
