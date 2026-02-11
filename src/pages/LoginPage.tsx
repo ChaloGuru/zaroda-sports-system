@@ -18,7 +18,7 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
@@ -53,8 +53,8 @@ const LoginPage = () => {
   };
 
   const handleResetPassword = async () => {
-    if (!resetEmail.trim()) {
-      toast.error('Please enter the admin email');
+    if (!currentPassword.trim()) {
+      toast.error('Please enter the current password');
       return;
     }
     if (!newPassword.trim()) {
@@ -73,9 +73,9 @@ const LoginPage = () => {
       toast.error('Password must be at least 6 characters');
       return;
     }
-    
+
     setResetLoading(true);
-    const result = await resetPassword(resetEmail.trim(), newPassword.trim(), confirmPassword.trim());
+    const result = await resetPassword(currentPassword.trim(), newPassword.trim(), confirmPassword.trim());
     setResetLoading(false);
 
     if (result.success) {
@@ -83,7 +83,7 @@ const LoginPage = () => {
       setResetSummary(result.resetSummary);
       setShowSummary(true);
       // Reset form
-      setResetEmail('');
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } else {
@@ -193,7 +193,7 @@ const LoginPage = () => {
             <>
               <DialogHeader>
                 <DialogTitle>Reset Admin Password</DialogTitle>
-                <p id="reset-desc" className="text-muted-foreground text-sm mt-1">To reset your password, first verify your current username and password.</p>
+                <p id="reset-desc" className="text-muted-foreground text-sm mt-1">Enter your current password, then set a new password.</p>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 {/* Step 1: Verify current credentials */}
@@ -244,15 +244,15 @@ const LoginPage = () => {
                 {resetSummary?.verified && (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="reset_email">Admin Email</Label>
+                      <Label htmlFor="current_password_reset">Current Password</Label>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
-                          id="reset_email"
-                          type="email"
-                          value={resetEmail}
-                          onChange={(e) => setResetEmail(e.target.value)}
-                          placeholder="Type email"
+                          id="current_password_reset"
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="Enter current password"
                           className="pl-10"
                         />
                       </div>
@@ -310,7 +310,7 @@ const LoginPage = () => {
               <div className="py-4">
                 {resetSummary && (
                   <PasswordResetSummary
-                    email={resetSummary.email}
+                    username={resetSummary.username}
                     resetDate={resetSummary.resetDate}
                     resetTime={resetSummary.resetTime}
                     adminNotified={resetSummary.adminNotified}

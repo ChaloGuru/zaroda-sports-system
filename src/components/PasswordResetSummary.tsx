@@ -4,7 +4,7 @@ import { Download, Mail, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ResetSummaryProps {
-  email: string;
+  username: string;
   resetDate: string;
   resetTime: string;
   adminNotified: boolean;
@@ -12,7 +12,7 @@ interface ResetSummaryProps {
 }
 
 export const PasswordResetSummary = ({
-  email,
+  username,
   resetDate,
   resetTime,
   adminNotified,
@@ -119,8 +119,8 @@ export const PasswordResetSummary = ({
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Reset Details</h3>
             <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Admin Email:</span>
-                <span className="font-medium text-gray-900">{email}</span>
+                <span className="text-gray-600">Admin Username:</span>
+                <span className="font-medium text-gray-900">{username}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Reset Date:</span>
@@ -140,7 +140,7 @@ export const PasswordResetSummary = ({
               <div>
                 <h4 className="font-semibold text-blue-900">Admin Notification</h4>
                 <p className="text-sm text-blue-800 mt-1">
-                  A notification email has been sent to the admin ({email}) confirming this password reset.
+                  A notification has been sent to the admin ({username}) confirming this password reset.
                 </p>
               </div>
             </div>

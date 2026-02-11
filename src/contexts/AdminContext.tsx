@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import bcrypt from 'bcryptjs';
 import { supabase } from '@/integrations/supabase/client';
 import { sendPasswordResetNotification } from '@/integrations/email/passwordResetNotification';
 
@@ -6,7 +7,7 @@ interface ResetPasswordResult {
   success: boolean;
   error?: string;
   resetSummary?: {
-    email: string;
+    username: string;
     resetDate: string;
     resetTime: string;
     adminNotified: boolean;
@@ -18,7 +19,7 @@ interface AdminContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  resetPassword: (email: string, newPassword: string, confirmPassword: string) => Promise<ResetPasswordResult>;
+  resetPassword: (currentPassword: string, newPassword: string, confirmPassword: string) => Promise<ResetPasswordResult>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -37,19 +38,47 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { data, error } = await supabase
+      const { data: admin, error } = await supabase
         .from('admins')
-        .select('*')
+        .select('id, username, password_hash, email')
         .eq('username', username)
-        .eq('password_hash', password)
         .single();
 
-      if (error || !data) {
+      if (error || !admin) {
+        return { success: false, error: 'Invalid credentials' };
+      }
+
+      const storedHash: string = admin.password_hash || '';
+
+      // Detect whether stored value is a bcrypt hash (starts with $2a$ or $2b$ or $2y$)
+      const isBcrypt = storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$') || storedHash.startsWith('$2y$');
+
+      let passwordMatches = false;
+
+      if (isBcrypt) {
+        passwordMatches = await bcrypt.compare(password, storedHash);
+      } else {
+        // Fallback for legacy plain-text passwords: compare directly
+        passwordMatches = password === storedHash;
+        // If it matches, migrate the password to a bcrypt hash
+        if (passwordMatches) {
+          try {
+            const newHash = await bcrypt.hash(password, 10);
+            await supabase.from('admins').update({ password_hash: newHash }).eq('id', admin.id);
+          } catch (e) {
+            console.warn('Failed to migrate plain-text password to bcrypt hash', e);
+          }
+        }
+      }
+
+      if (!passwordMatches) {
         return { success: false, error: 'Invalid credentials' };
       }
 
       setIsAdmin(true);
       sessionStorage.setItem('zaroda_admin', 'true');
+      // store username for future operations like password reset
+      sessionStorage.setItem('zaroda_admin_username', admin.username);
       return { success: true };
     } catch {
       return { success: false, error: 'Login failed' };
@@ -59,10 +88,11 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const logout = () => {
     setIsAdmin(false);
     sessionStorage.removeItem('zaroda_admin');
+    sessionStorage.removeItem('zaroda_admin_username');
   };
 
   const resetPassword = async (
-    email: string,
+    currentPassword: string,
     newPassword: string,
     confirmPassword: string
   ): Promise<ResetPasswordResult> => {
@@ -75,43 +105,39 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return { success: false, error: 'Password must be at least 6 characters' };
       }
 
-      // Try to find admin by email first; if not found, fallback to username
-      const ident = email.trim();
-      let admin: any = null;
-      let fetchError: any = null;
-
-      if (ident.includes('@')) {
-        const res = await supabase
-          .from('admins')
-          .select('id, email, username')
-          .eq('email', ident)
-          .single();
-        admin = (res as any).data;
-        fetchError = (res as any).error;
+      // Determine current admin by stored username
+      const storedUsername = sessionStorage.getItem('zaroda_admin_username');
+      if (!storedUsername) {
+        return { success: false, error: 'Not authenticated as admin' };
       }
 
-      if (!admin) {
-        // If user typed an email but the DB stores username only (e.g. 'oduorongo'),
-        // try using the part before @ as username. Also try the identifier as-is.
-        const possibleUser = ident.includes('@') ? ident.split('@')[0] : ident;
-        const res2 = await supabase
-          .from('admins')
-          .select('id, email, username')
-          .or(`username.eq.${possibleUser},username.eq.${ident}`)
-          .single();
-        admin = (res2 as any).data;
-        fetchError = (res2 as any).error;
-      }
+      const { data: admin, error: fetchError } = await supabase
+        .from('admins')
+        .select('id, email, username, password_hash')
+        .eq('username', storedUsername)
+        .single();
 
       if (fetchError || !admin) {
-        return { success: false, error: 'No admin account found with that email/username' };
+        return { success: false, error: 'Admin account not found' };
       }
 
-      // Update password
-      const { error: updateError } = await supabase
-        .from('admins')
-        .update({ password_hash: newPassword })
-        .eq('id', admin.id);
+      const storedHash: string = admin.password_hash || '';
+      const isBcrypt = storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$') || storedHash.startsWith('$2y$');
+
+      let currentMatches = false;
+      if (isBcrypt) {
+        currentMatches = await bcrypt.compare(currentPassword, storedHash);
+      } else {
+        currentMatches = currentPassword === storedHash;
+      }
+
+      if (!currentMatches) {
+        return { success: false, error: 'Invalid current password' };
+      }
+
+      // Hash new password before saving
+      const newHash = await bcrypt.hash(newPassword, 10);
+      const { error: updateError } = await supabase.from('admins').update({ password_hash: newHash }).eq('id', admin.id);
 
       if (updateError) {
         return { success: false, error: 'Failed to update password' };
@@ -130,12 +156,12 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         second: '2-digit',
       });
 
-      const notifyEmail = admin.email || identifier;
+      const notifyUsername = admin.username || 'admin';
 
       // Send notification (best-effort)
       try {
         await sendPasswordResetNotification({
-          adminEmail: notifyEmail,
+          adminEmail: notifyUsername,
           resetDate,
           resetTime,
           ipAddress: 'local',
@@ -145,26 +171,15 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.log('Failed to send password reset notification', e);
       }
 
-      // Log the password reset for admin notification (best-effort)
-      try {
-        await supabase
-          .from('password_reset_logs')
-          .insert({
-            admin_id: admin.id,
-            reset_date: now.toISOString(),
-            reset_ip: 'local',
-            status: 'completed',
-          });
-      } catch (e) {
-        console.log('Could not log reset to database', e);
-      }
-
       const resetSummary = {
-        email: notifyEmail,
+        username: notifyUsername,
         resetDate,
         resetTime,
-        adminNotified: !!notifyEmail,
+        adminNotified: true,
       };
+
+      // Invalidate current session so admin must sign in with the new password
+      logout();
 
       return { success: true, resetSummary };
     } catch (err) {
