@@ -401,18 +401,28 @@ const AdminDashboard = () => {
       
       // Upload document if provided
       if (circularDocument) {
-        const fileName = `circular_${Date.now()}_${circularDocument.name}`;
-        const { data, error } = await supabase.storage
-          .from('circulars')
-          .upload(fileName, circularDocument);
-        
-        if (error) throw error;
-        
-        const { data: publicData } = supabase.storage
-          .from('circulars')
-          .getPublicUrl(fileName);
-        
-        documentUrl = publicData?.publicUrl;
+        try {
+          const fileName = `circular_${Date.now()}_${circularDocument.name}`;
+          const { data, error } = await supabase.storage
+            .from('circulars')
+            .upload(fileName, circularDocument);
+          
+          if (error) {
+            console.warn('Circular upload error (bucket may not exist):', error.message);
+            toast.warning('Document upload skipped - storage bucket not configured');
+          } else if (data) {
+            const { data: publicData } = supabase.storage
+              .from('circulars')
+              .getPublicUrl(fileName);
+            
+            if (publicData?.publicUrl) {
+              documentUrl = publicData.publicUrl;
+            }
+          }
+        } catch (storageError) {
+          console.warn('Storage operation failed:', storageError);
+          toast.warning('Document upload failed - continuing without document');
+        }
       }
       
       await createCircular.mutateAsync({
@@ -422,12 +432,13 @@ const AdminDashboard = () => {
         sender_role: formData.get('sender_role') as string || 'National Admin',
         target_level: circularLevel,
         is_published: true,
-        document_url: documentUrl,
+        document_url: documentUrl || null,
       });
       toast.success('Circular published');
       setCircularDialog(false);
       setCircularDocument(null);
-    } catch { 
+    } catch (error) { 
+      console.error('Failed to publish circular:', error);
       toast.error('Failed to publish circular'); 
       setCircularDocument(null);
     }
@@ -903,7 +914,7 @@ const AdminDashboard = () => {
 
       {/* Game Dialog */}
       <Dialog open={gameDialog} onOpenChange={setGameDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby="game-dialog-desc">
           <DialogHeader><DialogTitle>{editingGame ? 'Edit Game' : 'Add New Game'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveGame(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
@@ -986,7 +997,7 @@ const AdminDashboard = () => {
 
       {/* School Dialog */}
       <Dialog open={schoolDialog} onOpenChange={setSchoolDialog}>
-        <DialogContent>
+        <DialogContent aria-describedby="school-dialog-desc">
           <DialogHeader><DialogTitle>{editingSchool ? 'Edit School' : 'Add New School'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveSchool(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
@@ -1008,7 +1019,7 @@ const AdminDashboard = () => {
 
       {/* Participant / Record Results Dialog */}
       <Dialog open={participantDialog} onOpenChange={setParticipantDialog}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby="participant-dialog-desc">
           <DialogHeader><DialogTitle>{editingParticipant ? 'Edit Result' : 'Record Result'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveParticipant(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
@@ -1113,7 +1124,7 @@ const AdminDashboard = () => {
 
       {/* Championship Dialog */}
       <Dialog open={championshipDialog} onOpenChange={setChampionshipDialog}>
-        <DialogContent>
+        <DialogContent aria-describedby="championship-dialog-desc">
           <DialogHeader><DialogTitle>Create Championship</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveChampionship(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
@@ -1138,7 +1149,7 @@ const AdminDashboard = () => {
 
       {/* Circular Dialog */}
       <Dialog open={circularDialog} onOpenChange={setCircularDialog}>
-        <DialogContent>
+        <DialogContent aria-describedby="circular-dialog-desc">
           <DialogHeader><DialogTitle>Publish Circular</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleSaveCircular(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
@@ -1175,7 +1186,7 @@ const AdminDashboard = () => {
 
       {/* Heat Dialog */}
       <Dialog open={heatDialog} onOpenChange={setHeatDialog}>
-        <DialogContent>
+        <DialogContent aria-describedby="heat-dialog-desc">
           <DialogHeader><DialogTitle>Create Heat</DialogTitle></DialogHeader>
           {selectedHeatGame && (
             <div className="flex flex-wrap gap-2 mb-2">
@@ -1202,7 +1213,7 @@ const AdminDashboard = () => {
 
       {/* Heat Participant Dialog - with text search */}
       <Dialog open={heatParticipantDialog} onOpenChange={setHeatParticipantDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg" aria-describedby="heat-participant-dialog-desc">
           <DialogHeader><DialogTitle>Add Participant to Heat</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleAddHeatParticipant(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
@@ -1253,7 +1264,7 @@ const AdminDashboard = () => {
 
       {/* Match Dialog */}
       <Dialog open={matchDialog} onOpenChange={setMatchDialog}>
-        <DialogContent>
+        <DialogContent aria-describedby="match-dialog-desc">
           <DialogHeader><DialogTitle>{editingMatchId ? 'Update Match Scores' : 'Create Match'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleCreateMatch(new FormData(e.currentTarget)); }}>
             <div className="space-y-4 py-4">
@@ -1307,7 +1318,7 @@ const AdminDashboard = () => {
 
       {/* Qualify Dialog */}
       <Dialog open={qualifyDialog} onOpenChange={setQualifyDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl" aria-describedby="qualify-dialog-desc">
           <DialogHeader><DialogTitle>Select Qualifiers - {selectedGameForQualify?.name}</DialogTitle></DialogHeader>
           <div className="py-4">
             <p className="text-muted-foreground mb-4">Select up to {selectedGameForQualify?.max_qualifiers} participants. Selected: {selectedQualifiers.length}/{selectedGameForQualify?.max_qualifiers}</p>

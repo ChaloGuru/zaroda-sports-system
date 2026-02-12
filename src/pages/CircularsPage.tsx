@@ -9,6 +9,18 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 
+// Helper function to validate URLs
+const isValidUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    console.warn('Invalid document URL detected:', url);
+    return false;
+  }
+};
+
 const CircularsPage = () => {
   const { data: circulars = [], isLoading } = useCirculars();
   const [levelFilter, setLevelFilter] = useState<CompetitionLevel | 'all'>('all');
@@ -73,7 +85,7 @@ const CircularsPage = () => {
                 <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
                   {circular.content}
                 </div>
-                {circular.document_url && (
+                {isValidUrl(circular.document_url) && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <Button 
                       asChild 
@@ -81,7 +93,7 @@ const CircularsPage = () => {
                       size="sm"
                       className="gap-2"
                     >
-                      <a href={circular.document_url} target="_blank" rel="noopener noreferrer">
+                      <a href={circular.document_url!} target="_blank" rel="noopener noreferrer">
                         <Download className="w-4 h-4" />
                         Download Document
                       </a>
