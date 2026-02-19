@@ -19,7 +19,7 @@ const handleShare = async () => {
   const url = window.location.href;
   if (navigator.share) {
     try {
-      await navigator.share({ title: 'Zaroda Sports', url });
+await navigator.share({ title: 'Lynez Sports', url });
     } catch {}
   } else {
     await navigator.clipboard.writeText(url);
@@ -40,8 +40,8 @@ export const Navbar = () => {
             <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
               <span className="text-primary font-display text-xl">Z</span>
             </div>
-            <span className="text-primary-foreground font-display text-2xl tracking-wider hidden sm:inline">
-              ZARODA SPORTS
+<span className="text-primary-foreground font-display text-2xl tracking-wider hidden sm:inline">
+              LYNEZ SPORTS
             </span>
           </Link>
 

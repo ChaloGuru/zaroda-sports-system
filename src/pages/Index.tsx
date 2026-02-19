@@ -44,7 +44,7 @@ const Index = () => {
               <Trophy className="w-5 h-5 text-secondary" />
               <span className="text-sm font-medium">Kenya School Sports Federation</span>
             </div>
-            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl tracking-wider mb-6">ZARODA SPORTS</h1>
+<h1 className="font-display text-5xl md:text-7xl lg:text-8xl tracking-wider mb 6">LYNEZ SPORTS</h1>
             <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-8">
               Track competitions from Zone to National level. Follow results from anywhere — view participants, results, and qualifiers across all sporting categories.
             </p>
@@ -132,7 +132,7 @@ const Index = () => {
               <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
                 <span className="text-primary font-display text-xl">Z</span>
               </div>
-              <span className="font-display text-2xl tracking-wider">ZARODA SPORTS</span>
+<span className="font-display text-2xl tracking-wider">LYNEZ SPORTS</span>
             </div>
             <p className="text-primary-foreground/60 text-sm">© 2026 Zaroda Sports System. All rights reserved.</p>
           </div>

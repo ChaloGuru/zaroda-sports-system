@@ -537,7 +537,7 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <h1 className="font-display text-2xl tracking-wider">ADMIN DASHBOARD</h1>
-                <p className="text-primary-foreground/70 text-sm">Zaroda Sports Management</p>
+<p className="text-primary-foreground/70 text-sm">Lynez Sports Management</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
