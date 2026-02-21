@@ -1,86 +1,277 @@
-# Zaroda Sports System
+Zaroda Sports System
 
-A comprehensive sports management system built with modern web technologies.
+A CBC-Based Multi-Level Sports & Co-Curricular Management Platform for Kenya
 
-## Project Overview
+📌 Overview
 
-The Zaroda Sports System is designed to manage sports competitions, participants, rankings, and various sports-related data with an intuitive admin dashboard.
+Zaroda Sports System is a comprehensive digital platform designed to manage and streamline sports and co-curricular competitions in Kenya under the Competency-Based Curriculum (CBC).
 
-## Technologies Used
+The system supports structured competition management from:
 
-This project is built with:
+School Level
 
-- **Vite** - Fast build tool and development server
-- **TypeScript** - Type-safe JavaScript
-- **React** - UI component framework
-- **shadcn-ui** - High-quality UI components
-- **Tailwind CSS** - Utility-first CSS framework
-- **Supabase** - Backend-as-a-service for database and authentication
-- **React Query** - Data fetching and caching
-- **React Hook Form** - Efficient form handling
-- **Recharts** - Data visualization
+Base Level
 
-## Getting Started
+Zone Level
 
-### Prerequisites
+Sub-County Level
 
-- Node.js (v16 or higher)
-- npm or yarn package manager
+County Level
 
-### Installation
+Regional Level
 
-1. Clone the repository:
-```sh
-git clone https://github.com/ChaloGuru/zaroda-sports-system.git
-cd zaroda-sports-system
-```
+National Level
 
-2. Install dependencies:
-```sh
-npm install
-```
+It ensures fairness, transparency, structured team progression, and accurate performance tracking across all competition stages.
 
-3. Start the development server:
-```sh
-npm run dev
-```
+This is a real-world competition management system built for scalability and national-level coordination.
 
-The application will be available at `http://localhost:8080`
+🎯 Vision
 
-## Available Scripts
+To digitize and standardize sports and co-curricular competition management in Kenya by eliminating bias, improving transparency, and ensuring structured talent progression from grassroots to national level.
 
-- `npm run dev` - Start the development server
-- `npm run build` - Build for production
-- `npm run build:dev` - Build in development mode
-- `npm run preview` - Preview the production build locally
-- `npm run lint` - Run ESLint
-- `npm run test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
+🏗️ System Architecture
 
-## Project Structure
+Frontend: React.js
 
-- `src/components/` - Reusable React components
-- `src/pages/` - Page components
-- `src/hooks/` - Custom React hooks
-- `src/contexts/` - React context providers
-- `src/integrations/` - External service integrations (Supabase)
-- `src/types/` - TypeScript type definitions
-- `public/` - Static assets
+Backend & Database: Supabase
 
-## Deployment
+Role-Based Access Control
 
-Build the project for production:
+Structured Competition Progression Logic
 
-```sh
-npm run build
-```
+Automated Team Pooling System
 
-The built files will be in the `dist/` directory, ready to be deployed to any static hosting service.
+Performance Analytics Engine
 
-## Contributing
+🏆 Competition Structure
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+The system manages competitions across hierarchical levels:
 
-## License
+Level	Teams Represent
+School	Individual schools
+Base	Schools grouped
+Zone	Bases grouped
+Sub-County	Zones grouped
+County	Sub-counties grouped
+Region	Counties grouped
+National	Regions grouped
 
-This project is licensed under the MIT License.
+Team representation changes dynamically based on competition level:
+
+At Base level → Teams are schools
+
+At Zone level → Teams are bases
+
+At Sub-County level → Teams are zones
+
+At County level → Teams are sub-counties
+
+At Regional level → Teams are counties
+
+At National level → Teams are regions
+
+🏀 Supported Categories
+🟢 Ball Games
+
+Includes all standard ball games such as:
+
+Netball
+
+Volleyball
+
+Football
+
+Basketball
+
+Handball
+
+Rugby
+
+Other recognized CBC ball games
+
+Each game supports:
+
+Team registration
+
+Fixtures & match tracking
+
+Score recording
+
+Winner promotion
+
+🏃 Athletics
+
+The system manages:
+
+Track events
+
+Field events
+
+Individual performance scoring
+
+Position tracking
+
+Talent progression
+
+All athletics events are categorized and tracked per level.
+
+🎶 Music & Co-Curricular Activities
+
+Performance tracking
+
+Category-based competition
+
+Judging & scoring
+
+Promotion to next level
+
+👥 Category Separation
+
+The system enforces:
+
+Girls category
+
+Boys category
+
+Separate competition brackets
+
+This ensures fairness and compliance with structured sports organization standards.
+
+🎓 Education Level Categorization
+
+The platform separates participants into:
+
+Primary School
+
+Junior Secondary (JS)
+
+Each level has distinct promotion rules:
+
+🏅 Primary Schools
+
+Individual best performers are selected.
+
+Top-performing students are pooled to form a new representative team for the next level.
+
+Applies separately for boys and girls.
+
+🏆 Junior Secondary
+
+The entire winning team progresses to the next level.
+
+No pooling — team integrity is maintained.
+
+Applies separately for boys and girls.
+
+🔄 Automated Pooling & Anti-Bias System
+
+To eliminate favoritism and bias:
+
+Teams are automatically pooled based on performance.
+
+System-generated grouping logic ensures fairness.
+
+Transparent selection mechanism.
+
+Data-driven advancement.
+
+This ensures merit-based progression from school to national level.
+
+📊 Performance Analytics
+
+The system calculates:
+
+Overall Best Performer (Individual)
+
+Best Performing School
+
+Aggregated Performance Score (Primary + Junior Secondary)
+
+Category-based performance analysis (Girls & Boys)
+
+Game-based scoring summaries
+
+The best performing school is determined by combining:
+
+All games played
+
+Both education levels
+
+Both gender categories
+
+Total cumulative points
+
+🚀 Key Features
+
+Multi-level competition hierarchy
+
+Automated team promotion
+
+CBC-aligned categorization
+
+Gender-based competition separation
+
+Primary & Junior Secondary differentiation
+
+Performance analytics dashboard
+
+Real-time score management
+
+Transparent progression tracking
+
+Supabase-powered backend for scalability
+
+🔐 Security & Data Control
+
+Role-based access control
+
+Structured competition data isolation
+
+Secure Supabase backend
+
+Controlled score entry permissions
+
+Level-specific administrative roles
+
+🌍 Real-World Impact
+
+Zaroda Sports System solves common challenges in Kenyan sports competitions:
+
+Manual and biased team selection
+
+Poor record keeping
+
+Lack of transparent progression
+
+Disorganized talent tracking
+
+Inconsistent scoring
+
+The platform introduces structure, fairness, and scalability to national-level sports coordination.
+
+📈 Future Enhancements
+
+Live match streaming integration
+
+SMS notifications for teams
+
+AI-based talent ranking
+
+Mobile application version
+
+National sports dashboard integration
+
+Integration with education ministry systems
+
+👨‍💻 Developer
+
+Charles Onyango
+Software Engineering Student
+Email: charlesopiyo7383@gmail.com
+
+Phone: +254 757874639
+
+📌 Project Status
+
+Production-Oriented | Scalable National Sports Management System | Active Development
